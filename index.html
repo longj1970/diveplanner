@@ -133,6 +133,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy)}
 /* ---------- Modal ---------- */
 .modal{position:fixed;inset:0;background:rgba(11,37,64,.55);display:none;align-items:flex-start;justify-content:center;padding:30px 12px;overflow:auto;z-index:20}
 .modal.open{display:flex}
+body:has(.modal.open){overflow:hidden}
 .modal .box{background:#fff;border-radius:12px;max-width:820px;width:100%;padding:22px}
 .modal h2{margin:0 0 8px;color:var(--navy)}
 .sitelist{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:8px;margin:8px 0}
@@ -164,6 +165,33 @@ button,a,select,input{touch-action:manipulation;-webkit-tap-highlight-color:tran
 .sharebar{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:var(--navy);color:#fff;border-radius:12px;padding:10px 12px 10px 16px;display:none;align-items:center;gap:12px;z-index:40;box-shadow:0 6px 20px rgba(0,0,0,.25)}
 .sharebar.show{display:flex}
 .sharebar button{background:#fff;color:var(--navy);border:none}
+/* ---------- Training (v1.7) ---------- */
+.train-intro{background:var(--foam);border-radius:10px;padding:12px 14px;margin:0 0 14px;font-size:15px}
+.tsec{border:1px solid var(--line);border-radius:10px;margin:8px 0;background:#fff}
+.tsec summary{list-style:none;cursor:pointer;padding:12px 14px;display:flex;align-items:center;gap:10px;font-weight:700;color:var(--navy)}
+.tsec summary::-webkit-details-marker{display:none}
+.tsec summary .num{flex:none;width:28px;height:28px;border-radius:50%;background:var(--sea);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px}
+.tsec summary::after{content:"+";margin-left:auto;font-size:20px;color:var(--teal)}
+.tsec[open] summary::after{content:"–"}
+.tsec .tbody{padding:0 14px 12px 52px;font-size:15px}
+.tsec .tbody h4{margin:10px 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--teal)}
+.tsec .tbody ul{margin:4px 0 6px 18px;padding:0}
+.tsec .tbody p{margin:4px 0}
+.quiz{margin-top:18px;border:2px solid var(--sea);border-radius:12px;padding:16px}
+.quiz h3{margin:0 0 6px;color:var(--navy);font-size:22px}
+.qbar{height:8px;background:var(--foam);border-radius:99px;overflow:hidden;margin:8px 0 14px}
+.qbar div{height:100%;background:var(--teal);transition:width .3s}
+.qtext{font-weight:700;font-size:17px;margin:4px 0 12px}
+.qopt{display:block;width:100%;text-align:left;margin:8px 0;padding:12px 14px;border-radius:10px;font-weight:500;font-size:15.5px;border:1.5px solid var(--line);background:#fff}
+.qopt:hover{background:var(--foam)}
+.qopt.right{border-color:var(--ok);background:#e3f3e8;font-weight:700}
+.qopt.wrong{border-color:var(--bad);background:#fdeeee}
+.qopt:disabled{cursor:default;opacity:1;color:var(--ink)}
+.qfeed{margin:10px 0;padding:10px 12px;border-radius:8px;font-size:14.5px}
+.qfeed.ok{background:#e3f3e8} .qfeed.no{background:#fdeeee}
+.qscore{font-size:40px;font-family:"Barlow Condensed";font-weight:700;color:var(--navy);margin:4px 0}
+.qreview div{padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.qreview .x{color:var(--bad);font-weight:700} .qreview .t{color:var(--ok);font-weight:700}
 .savedlist div{display:flex;align-items:center;gap:8px;padding:10px;border-bottom:1px solid var(--line)}
 .savedlist div:last-child{border-bottom:none}
 .savedlist .meta{flex:1;min-width:0}
@@ -193,7 +221,7 @@ body.offline .offline-pill{display:inline-block}
   .row3{grid-template-columns:1fr 1fr}
   #btnGen{position:sticky;bottom:calc(76px + env(safe-area-inset-bottom));z-index:5;box-shadow:0 6px 18px rgba(15,92,120,.35);border-radius:12px}
   .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:18;background:rgba(255,255,255,.95);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-top:1px solid var(--line);padding:4px 4px calc(4px + env(safe-area-inset-bottom))}
-  .tabbar button{flex:1;border:none;background:none;color:#7b8794;font-size:11px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;min-height:50px;border-radius:10px;position:relative}
+  .tabbar button{flex:1;border:none;background:none;color:#7b8794;font-size:10.5px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;min-height:50px;border-radius:10px;position:relative}
   .tabbar button.active{color:var(--sea)}
   .tabbar button:hover{background:none}
   .tabbar .dot{position:absolute;top:4px;left:calc(50% + 8px);width:8px;height:8px;border-radius:50%;background:var(--bad);display:none}
@@ -213,6 +241,7 @@ body.offline .offline-pill{display:inline-block}
   #plan .glance .cards{grid-template-columns:1fr 1fr}
   #plan .glance .verdict{flex-direction:column;align-items:flex-start;gap:2px}
   .modal{padding:0;align-items:stretch}
+  .modal.open{display:block;background:#fff}
   .modal .box{border-radius:0;min-height:100%;max-width:none;padding:calc(12px + env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom))}
   .hz{grid-template-columns:1fr 1fr;border-bottom:1px dashed var(--line);padding-bottom:6px}
   .hz input:nth-child(5){grid-column:1/-1}
@@ -251,6 +280,7 @@ body.offline .offline-pill{display:inline-block}
   </div>
   <div class="spacer"></div>
   <span class="offline-pill">Offline</span>
+  <button id="btnTrain">Training</button>
   <button id="btnSaved">Saved plans</button>
   <button id="btnDivers">Divers</button>
   <button id="btnSites">Site library</button>
@@ -439,8 +469,20 @@ body.offline .offline-pill{display:inline-block}
   <button type="button" data-open="saved"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z"/></svg>Saved</button>
   <button type="button" data-open="divers"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>Divers</button>
   <button type="button" data-open="sites"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>Sites</button>
+  <button type="button" data-open="train"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg>Learn</button>
 </nav>
 <div class="sharebar" id="shareBar"><span>Word file ready</span><button type="button" id="shareBtn">Share…</button></div>
+
+<!-- ================= TRAINING MODAL (v1.7) ================= -->
+<div class="modal" id="trainModal">
+  <div class="box">
+    <div style="display:flex;align-items:center;gap:8px">
+      <h2 style="flex:1">Dive plan training</h2>
+      <button class="small" id="trainClose">Close</button>
+    </div>
+    <div id="trainBody"></div>
+  </div>
+</div>
 
 <!-- ================= SAVED PLANS MODAL (v1.4) ================= -->
 <div class="modal" id="savedModal">
@@ -1305,6 +1347,83 @@ function buildPlan(out, roles){
   savePlanRecord(rec);
 }
 
+/* ---------------- v1.7: Training guide & quiz ----------------
+   Content lives here so the Diving Officer can edit it. Each section: title, what goes in it, why it matters, where the app gets it. */
+const TRAINING = {
+  intro: "A dive plan makes sure everyone knows where, when and how the club is diving, what the conditions will be, what could go wrong and what to do if it does. The planner fills most of it in automatically, but the organiser is responsible for checking it. Work through each section below, then take the 10-question quiz.",
+  sections: [
+    { t:"Expedition summary", what:["Site, date, meeting point and time","Departure, arrival and dive times","Dive objectives and buddy groups' maximum depths"], why:"Gives everyone the whole day in one paragraph, so nobody turns up at the wrong place or time.", src:"Written from your inputs and the calculated schedule." },
+    { t:"Conditions at a glance", what:["Wind and gusts, rain, air and sea temperature","Daylight, sea state and tide data","Timing (are we on site in time?) and divers' depth limits","An overall verdict: suitable, go with caution, or act"], why:"A quick go/no-go check before and on the day. Red items must be dealt with. The Dive Marshal makes the final decision on site.", src:"Calculated from the weather, marine and tide forecasts and your plan." },
+    { t:"Site information", what:["Description, dive type and maximum depth","Coordinates and what3words for the entry point and parking","Google Maps directions and the divemap.uk reference"], why:"Lets everyone find the site and gives emergency services a precise location.", src:"The club site library, divemap.uk and what3words." },
+    { t:"Tide and weather planning", what:["Forecast summary and hourly table","High and low water times and heights","The tide state at each dive (flooding, ebbing or slack)"], why:"Tide affects current, visibility, entry and exit, and where kit can safely be left. Weather affects surface conditions and everyone's comfort and safety.", src:"Open-Meteo forecast. Tides from the Admiralty (with a key) or estimated from an ocean model – always confirm estimates with Admiralty EasyTide." },
+    { t:"Dive schedule", what:["Meeting time and point (entered by the organiser)","Standard schedule: dive 1 in the water at 10:00, dives up to 45 min","Next dive 1 hour 15 min after leaving the water (debrief, break, briefing, buddy checks)","Non-standard schedule when the day doesn't fit, e.g. timed to high water"], why:"Aim to be on site about an hour before dive 1 to unload, brief and kit up without rushing. The planner warns if the meeting time doesn't allow this.", src:"Your meeting time plus live drive time from OpenStreetMap routing." },
+    { t:"Dive information", what:["Objectives (e.g. skills at 8–15 m)","The route: entry, bearings, features, depth and turn points, exit","Optional dive map image"], why:"Every pair should know the route, depth and turn criteria before they get in.", src:"Route notes saved for the site in the site library." },
+    { t:"Risk assessment", what:["Site access notes (parking, carrying kit, entry)","Each hazard, the risk, Likelihood (1–3) × Severity (1–3) = score, and the controls","Extra hazards added for the forecast (cold, wind, swell, fading light, high water)"], why:"Scores of 1–2 are low (green), 3–4 medium (amber), 6–9 high (red) and need strong controls or a change of plan. A further assessment is always done on site.", src:"Standard club hazards, the site's own hazards and the forecast." },
+    { t:"Emergency Action Plan", what:["The site location to read out: coordinates, what3words, parking","Who to call: 999 or 112 and ask for the Coastguard (VHF 16 at sea)","Diving illness advice in Scotland: 0345 408 6008, ask for the on-call hyperbaric consultant","Immediate actions, oxygen, and the missing diver procedure","Nearest A&E and any closer minor injuries unit"], why:"In an emergency nobody should have to think about who to call or what to say. Never drive a casualty to a chamber unannounced – the Coastguard co-ordinates.", src:"Club settings, OpenStreetMap hospital data and your roles." },
+    { t:"Roles", what:["Expedition Organiser, Safety Officer, Dive Marshal","First Aider, Oxygen Administrator, BDO, Standby Diver"], why:"Clear responsibilities, especially in an emergency. The Dive Marshal runs the slate and the go/no-go decision.", src:"Entered by the organiser in the Team section." },
+    { t:"Buddy pairings and depth limits", what:["Each buddy group and its maximum depth","Each diver's ScotSAC grade: Branch Diver 15 m (12 m under 14), Sport Diver 30 m, Master and First Class Diver 40 m","A group's limit is set by its least-qualified diver"], why:"Nobody dives beyond their qualification. The planner flags any group planned deeper than its limit.", src:"Your pairings and the Divers register." },
+    { t:"Equipment checklist", what:["Standard kit: cylinder, regulators, drysuit, weights, torch, DSMB, reel, compass, computer, cutting device, slate","Extras for the conditions (hood and gloves, backup torch, waterproofs)","Who is bringing the club first aid and oxygen kits"], why:"Missing kit can stop a dive or make it unsafe.", src:"Club settings plus forecast-based extras." },
+    { t:"Buddy checks (BWRAF)", what:["B – Buoyancy: BCD and drysuit inflate and dump","W – Weights: right amount, secure, release known","R – Releases: all buckles and releases located","A – Air: cylinder fully on, both regulators breathe, gauge checked","F – Final checks: head to fin, nothing dangling, both happy"], why:"Done by every pair before every entry. Each pair then tells the Dive Marshal their max depth, direction and max time.", src:"Club procedure." },
+    { t:"Dive Marshal slate", what:["Each diver: cylinder and gas, air in, planned max depth","Time in, due out (time in + max dive time), time out, air out, actual max depth","An emergency (ICE) contact for every diver"], why:"The slate tracks who is in the water. A pair not back by their due-out time is overdue and the missing diver procedure starts. It also gives paramedics the dive profile.", src:"Printed with the plan, pre-filled from the buddy pairings." }
+  ],
+  quiz: [
+    { q:"There's a diving emergency at a shore site. Who do you call first?", o:["Dial 999 or 112 and ask for the Coastguard","Drive the casualty to the nearest hyperbaric chamber","Phone the hyperbaric unit directly before anyone else","Call NHS 111 for advice"], a:0, e:"Call 999 or 112 and ask for the Coastguard (VHF 16 at sea). They co-ordinate the ambulance, helicopter, lifeboat and the hyperbaric unit." },
+    { q:"Which number gives diving illness advice in Scotland?", o:["0345 408 6008 – ask for the on-call hyperbaric consultant","0845 408 6008","07831 151523","101"], a:0, e:"0345 408 6008 (Aberdeen Royal Infirmary) is the current number. 0845 is out of date, 07831 151523 is the line for England, Wales and Northern Ireland, and 101 is the police non-emergency number." },
+    { q:"A buddy group has a Sport Diver and a Branch Diver aged 16. What is the group's maximum depth?", o:["15 m","20 m","30 m","40 m"], a:0, e:"A group's limit is set by its least-qualified diver. A Branch Diver's limit is 15 m (12 m if under 14)." },
+    { q:"On the standard schedule, about how long should the group be on site before dive 1?", o:["About 1 hour","About 15 minutes","About 2 hours","No set time"], a:0, e:"Allow about an hour on site to unload, brief, kit up and do buddy checks. The planner warns if your meeting time doesn't allow this." },
+    { q:"On the standard schedule, how long after leaving the water does the next dive enter the water?", o:["1 hour 15 minutes","30 minutes","45 minutes","3 hours"], a:0, e:"1 hour 15 minutes covers the debrief, a break, the next briefing and buddy checks." },
+    { q:"A hazard has Likelihood 2 and Severity 3. What is its risk score and rating?", o:["6 – high","5 – medium","3 – medium","1.5 – low"], a:0, e:"Risk = Likelihood × Severity = 2 × 3 = 6, which is high (red) and needs strong controls or a change of plan." },
+    { q:"In the BWRAF buddy check, what does R stand for?", o:["Releases","Regulator","Reel","Route"], a:0, e:"B Buoyancy, W Weights, R Releases, A Air, F Final checks. Releases means locating all of your buddy's buckles and releases." },
+    { q:"On the Dive Marshal slate, how is a pair's 'due out' time worked out?", o:["Time in + max dive time","Planned entry time + 1 hour","Time the briefing ends","Low water time"], a:0, e:"Due out = actual time in + max dive time. A pair not back by then is overdue and the missing diver procedure starts." },
+    { q:"The plan says the tide times are an estimate. What should you do?", o:["Confirm them with Admiralty EasyTide before the dive","Ignore tides for shore dives","Use them as official chart datum heights","Cancel the dive"], a:0, e:"Estimated tides come from an ocean model and heights are relative to mean sea level. Confirm times with Admiralty EasyTide, or add a free UKHO key for official times." },
+    { q:"Who makes the final go/no-go decision on the day?", o:["The Dive Marshal, after assessing conditions on site","The planner's conditions panel","Whoever arrives first","Each pair decides for themselves"], a:0, e:"The conditions panel is a guide. The Dive Marshal assesses conditions on site and makes the final decision; anyone with concerns should raise them with the Safety Officer and Dive Marshal." }
+  ]
+};
+let quizState = null;
+function shuffle(a){ a = a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function openTraining(){
+  const T = TRAINING, last = store.get("quizBest", null);
+  $("trainBody").innerHTML = `<p class="train-intro">${esc(T.intro)}</p>` +
+    T.sections.map((x,i)=>`<details class="tsec"><summary><span class="num">${i+1}</span>${esc(x.t)}</summary><div class="tbody">
+      <h4>What goes in it</h4><ul>${x.what.map(w=>`<li>${esc(w)}</li>`).join("")}</ul>
+      <h4>Why it matters</h4><p>${esc(x.why)}</p>
+      <h4>Where the planner gets it</h4><p class="muted">${esc(x.src)}</p></div></details>`).join("") +
+    `<div class="quiz" id="quiz"><h3>Check your understanding</h3><p class="muted" style="margin:0 0 10px">10 multiple-choice questions. Pass mark 8/10.${last?` Your best score on this device: <b>${last.score}/10</b> (${esc(last.date)}).`:""}</p><button type="button" class="primary" id="quizStart" style="width:auto;padding:10px 22px">Start the quiz</button></div>`;
+  $("quizStart").onclick = startQuiz;
+  $("trainModal").classList.add("open");
+}
+function startQuiz(){
+  quizState = { qs: shuffle(TRAINING.quiz).map(q=>{ const opts = shuffle(q.o.map((t,i)=>({t, right:i===q.a}))); return {...q, opts}; }), i:0, score:0, answers:[] };
+  renderQ();
+  $("quiz").scrollIntoView({behavior:"smooth", block:"start"});
+}
+function renderQ(){
+  const st = quizState, q = st.qs[st.i];
+  $("quiz").innerHTML = `<div class="muted" style="font-size:13px;font-weight:600">Question ${st.i+1} of ${st.qs.length}</div><div class="qbar"><div style="width:${st.i/st.qs.length*100}%"></div></div>
+    <div class="qtext">${esc(q.q)}</div>${q.opts.map((o,k)=>`<button type="button" class="qopt" data-k="${k}">${String.fromCharCode(65+k)}. ${esc(o.t)}</button>`).join("")}<div id="qfb"></div>`;
+  $("quiz").querySelectorAll(".qopt").forEach(b=>b.onclick=()=>answerQ(+b.dataset.k));
+}
+function answerQ(k){
+  const st = quizState, q = st.qs[st.i], ok = q.opts[k].right;
+  if(ok) st.score++;
+  st.answers.push({q:q.q, ok, chosen:q.opts[k].t, right:q.opts.find(o=>o.right).t});
+  $("quiz").querySelectorAll(".qopt").forEach((b,i)=>{ b.disabled = true; if(q.opts[i].right) b.classList.add("right"); else if(i===k) b.classList.add("wrong"); });
+  const last = st.i === st.qs.length-1;
+  $("qfb").innerHTML = `<div class="qfeed ${ok?"ok":"no"}"><b>${ok?"Correct.":"Not quite."}</b> ${esc(q.e)}</div><button type="button" class="small" id="qnext" style="background:var(--sea);color:#fff;border-color:var(--sea)">${last?"See my score":"Next question"}</button>`;
+  $("qnext").onclick = () => { if(last) finishQuiz(); else { st.i++; renderQ(); } };
+  $("qnext").focus({preventScroll:true});
+}
+function finishQuiz(){
+  const st = quizState, pass = st.score >= 8;
+  const best = store.get("quizBest", null);
+  if(!best || st.score >= best.score) store.set("quizBest", {score:st.score, date:new Date().toLocaleDateString("en-GB")});
+  $("quiz").innerHTML = `<h3>${pass?"Well done – passed":"Not passed yet"}</h3><div class="qscore">${st.score}/10</div>
+    <p>${pass?"You understand what goes into a club dive plan. Ask the Diving Officer to record your result.":"Review the sections for the questions you missed, then try again. The pass mark is 8/10."}</p>
+    <div class="qreview">${st.answers.map((a,i)=>`<div><span class="${a.ok?"t":"x"}">${a.ok?"✓":"✗"}</span> ${i+1}. ${esc(a.q)}${a.ok?"":`<br><span class="muted">Your answer: ${esc(a.chosen)} · Correct: <b>${esc(a.right)}</b></span>`}</div>`).join("")}</div>
+    <p style="margin-top:12px"><button type="button" class="small" id="qagain" style="background:var(--sea);color:#fff;border-color:var(--sea)">Try again</button></p>`;
+  $("qagain").onclick = startQuiz;
+}
+
 /* ---------------- v1.4: views, saved plans, sharing ---------------- */
 const isPhone = () => window.matchMedia("(max-width:760px)").matches;
 function setView(v){
@@ -1536,7 +1655,8 @@ function fillMeetList(){ $("meetList").innerHTML = store.get("meetPoints",["McDo
   // ---- v1.4 app shell ----
   document.body.classList.add("view-form");
   document.querySelectorAll("#tabbar [data-view]").forEach(b=>b.onclick=()=>setView(b.dataset.view));
-  document.querySelectorAll("#tabbar [data-open]").forEach(b=>b.onclick=()=>({saved:openSaved, divers:openDivers, sites:()=>$("btnSites").click()})[b.dataset.open]());
+  document.querySelectorAll("#tabbar [data-open]").forEach(b=>b.onclick=()=>({saved:openSaved, divers:openDivers, sites:()=>$("btnSites").click(), train:openTraining})[b.dataset.open]());
+  $("btnTrain").onclick = openTraining; $("trainClose").onclick = () => $("trainModal").classList.remove("open");
   $("btnSaved").onclick = openSaved; $("emptySaved").onclick = openSaved; $("savedClose").onclick = () => $("savedModal").classList.remove("open");
   $("shareBtn").onclick = async () => { const f=_pendingShare; $("shareBar").classList.remove("show"); if(f){ try{ await navigator.share({files:[f], title:f.name}); }catch(e){} } };
   const standalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;

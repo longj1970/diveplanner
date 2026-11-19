@@ -28,6 +28,7 @@ The plan can be edited on screen, then downloaded as a **Word (.docx)** file, pr
 
 ## Version history
 
+- **v1.7** – Training section: a guide to each part of the dive plan and a 10-question multiple-choice quiz (pass mark 8/10). Fixed full-screen panels on iPhone.
 - **v1.6** – Meeting time and point are entered for each plan. Standard 10:00 schedule or a non-standard schedule. Arrival is checked against the first dive.
 - **v1.5.1** – Meeting point lookup fixed (searches near the dive site, handles misspellings) and shows the matched address.
 - **v1.5** – Schedule reworked around a 10:00 first dive: arrive on site 1 hour before, 1 h 15 min from leaving the water to the next entry, with debrief, break, briefing and buddy checks shown.
@@ -71,6 +72,12 @@ It is one file (`index.html`) with no server code. Any of these will host it:
 - **The club website:** upload `index.html` as a page or file.
 
 You can also double-click `index.html` to run it from your own computer.
+
+## Training
+
+The **Training** button (or the **Learn** tab on a phone) opens a guide for new members. It covers each of the 13 sections of a dive plan: what goes in it, why it matters and where the planner gets the information. It ends with a 10-question multiple-choice quiz, with feedback after each answer and a score at the end. The pass mark is 8/10, and each device remembers its best score. Questions and answers are shuffled each time.
+
+The Diving Officer can edit the guide and the questions in the `TRAINING` section near the top of the script in `index.html`.
 
 ## Divers register
 
