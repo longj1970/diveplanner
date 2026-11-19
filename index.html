@@ -286,14 +286,13 @@ body.offline .offline-pill{display:inline-block}
             <input type="date" id="date" required></div>
           </div>
           <div>
-            <div id="w_firstTime"><label for="firstTime">First dive in water</label>
-            <input type="time" id="firstTime" value="10:00" step="300"></div>
-            <div id="w_meetTime" style="display:none"><label for="meetTime">Meeting time</label>
-            <input type="time" id="meetTime" value="07:30" step="300"></div>
+            <div id="f_meetTime"><label for="meetTime">Meeting time <span class="req">*</span></label>
+            <input type="time" id="meetTime" step="300" required></div>
           </div>
         </div>
         <div id="f_meet"><label for="meet">Meeting point <span class="req">*</span></label>
-        <input id="meet" required placeholder="e.g. McDonald's Balloch" list="meetList"></div>
+        <input id="meet" required placeholder="e.g. McDonald's, Balloch" list="meetList"></div>
+        <p class="muted" style="font-size:13px;margin:6px 0 0">Choose a meeting time that gets everyone on site about an hour before the first dive.</p>
         <datalist id="meetList"></datalist>
       </fieldset>
 
@@ -305,13 +304,23 @@ body.offline .offline-pill{display:inline-block}
             <select id="numDives"><option>1</option><option selected>2</option><option>3</option></select>
           </div>
           <div>
-            <label for="timing">Plan timings around</label>
+            <label for="timing">Dive schedule</label>
             <select id="timing">
-              <option value="first" selected>First dive time</option>
-              <option value="meet">Fixed meeting time</option>
-              <option value="hw">High water (dive 1)</option>
-              <option value="lw">Low water (dive 1)</option>
+              <option value="std" selected>Standard – first dive 10:00</option>
+              <option value="custom">Non-standard – set my own</option>
             </select>
+          </div>
+        </div>
+        <div id="nonStd" style="display:none;border:1px solid var(--line);border-radius:10px;padding:4px 12px 12px;margin-top:10px;background:#fbfcfd">
+          <div class="row">
+            <div><label for="anchor">Time dive 1 to</label>
+              <select id="anchor"><option value="time">A set time</option><option value="hw">High water</option><option value="lw">Low water</option></select></div>
+            <div id="w_firstTime"><label for="firstTime">Dive 1 in water</label>
+              <input type="time" id="firstTime" value="10:00" step="300"></div>
+          </div>
+          <div class="row">
+            <div><label for="cDive">Max dive time (min)</label><input type="number" id="cDive" min="10" max="120" step="5"></div>
+            <div><label for="cGap">Out of water → next dive (min)</label><input type="number" id="cGap" min="60" max="240" step="5"></div>
           </div>
         </div>
         <label for="diveNotes">Dive objectives (optional)</label>
@@ -475,7 +484,7 @@ body.offline .offline-pill{display:inline-block}
       <label>Hyperbaric chamber contact</label><input id="st_hyper">
       <label>Default equipment list</label><textarea id="st_kit"></textarea>
       <div class="row3">
-        <div><label>Default first dive time</label><input id="st_firstDive" type="time" step="300"></div>
+        <div><label>Standard first dive time</label><input id="st_firstDive" type="time" step="300"></div>
         <div><label>Meet → depart (min)</label><input id="st_depart" type="number" min="0"></div>
         <div><label>Travel leeway (min)</label><input id="st_buffer" type="number" min="0"></div>
         <div><label>Arrive on site → first dive (min)</label><input id="st_arriveLead" type="number" min="15" max="120"></div>
@@ -869,8 +878,9 @@ function validateForm(){
     else if(!parseCoords(raw)) errs.push(["adhocCoords","Couldn't read this location – use 56.1944, -4.7710 or a Google Maps link"]);
   }
   if(!$("date").value) errs.push(["date","Choose the dive date"]);
+  if(!$("meetTime").value) errs.push(["meetTime","Enter the meeting time"]);
   if(!$("meet").value.trim()) errs.push(["meet","Enter where the group will meet"]);
-  ["site","adhocCoords","date","meet"].forEach(id=>setFieldError(id, (errs.find(e=>e[0]===id)||[])[1]));
+  ["site","adhocCoords","date","meetTime","meet"].forEach(id=>setFieldError(id, (errs.find(e=>e[0]===id)||[])[1]));
   const alert = $("formAlert");
   if(errs.length){
     alert.textContent = errs.length===1 ? "Please complete the highlighted field." : `Please complete the ${errs.length} highlighted fields.`;
@@ -892,7 +902,7 @@ const prog = {
 async function generate(ev){
   ev.preventDefault();
   const site = currentSite();
-  const date = $("date").value, meetQ = $("meet").value.trim(), meetTime = $("meetTime").value || "07:30";
+  const date = $("date").value, meetQ = $("meet").value.trim(), meetTime = $("meetTime").value;
   if(!validateForm()) return;
   if(!navigator.onLine){ toast("No signal – live weather and tides need internet. Showing saved plans."); openSaved(); return; }
   $("btnGen").disabled = true; $("btnGen").textContent = "Generating…"; statusEl.innerHTML = "";
@@ -903,7 +913,7 @@ async function generate(ev){
   // remember meeting points & team
   const mp = store.get("meetPoints", []); if(!mp.includes(meetQ)){ mp.unshift(meetQ); store.set("meetPoints", mp.slice(0,15)); fillMeetList(); }
   const roles = {}; document.querySelectorAll("[data-role]").forEach(i=>roles[i.dataset.role]=i.value.trim()); store.set("roles", roles);
-  store.set("lastForm", {v:15, firstTime:$("firstTime").value, site:$("site").value, meet:meetQ, meetTime, numDives:$("numDives").value, timing:$("timing").value, buddies:$("buddies").value, kitNotes:$("kitNotes").value});
+  store.set("lastForm", {v:16, site:$("site").value, numDives:$("numDives").value, timing:$("timing").value, buddies:$("buddies").value, kitNotes:$("kitNotes").value});
 
   stat("meet","run","Finding meeting point…");
   stat("wx","run","Fetching weather forecast…");
@@ -963,34 +973,39 @@ async function generate(ev){
 }
 
 /* Compute schedule from settings, drive time and (optionally) tide */
-/* v1.5 schedule: work back from the first dive (default 10:00).
-   Arrive on site no more than `arriveLead` (60) min before dive 1; next entry `interval` (75) min after leaving the water. */
+/* v1.6 schedule.
+   The organiser enters the meeting time. Standard schedule: dive 1 at the club start time (10:00),
+   max dive time and the gap to the next dive from Club settings. Non-standard: own dive 1 time
+   (or high/low water), dive time and gap for this plan. Arrival is estimated from the live drive time
+   and checked against the time needed on site before dive 1. */
 function schedule(out){
-  const S = settings, n = +$("numDives").value, mode = $("timing").value;
-  const lead = +S.arriveLead||60, brief = Math.min(+S.brief||45, lead), dive = +S.maxTime||45, gap = Math.max(60, +S.interval||75);
+  const S = settings, n = +$("numDives").value, custom = $("timing").value === "custom";
+  const lead = +S.arriveLead||60, brief = Math.min(+S.brief||45, lead);
+  const dive = custom && +$("cDive").value ? +$("cDive").value : (+S.maxTime||45);
+  const gap = Math.max(60, custom && +$("cGap").value ? +$("cGap").value : (+S.interval||75));
   const drive = Math.ceil((out.drive?.minutes||60)/5)*5;
   const tide = (out.ukho?.extremes || out.marine?.extremes || []);
-  let anchorNote = "", meet, depart, arrive, dive1;
-  const backFrom = d1 => { const arr = d1 - lead; const latestDepart = arr - drive - (+S.buffer||0); const m = Math.floor((latestDepart - (+S.depart||0))/15)*15; return {meet:m, depart:m + (+S.depart||0), arrive:arr, dive1:d1}; };
-  if(mode === "meet"){
-    meet = toMin(out.meetTime); depart = meet + (+S.depart||0);
-    arrive = Math.ceil((depart + drive + (+S.buffer||0))/5)*5; dive1 = Math.ceil((arrive + lead)/5)*5;
-  } else {
-    let target = toMin($("firstTime").value || S.firstDive || "10:00");
-    if(mode === "hw" || mode === "lw"){
-      const T = mode==="hw"?"HW":"LW";
+  const meet = toMin(out.meetTime), depart = meet + (+S.depart||0), arrive = depart + drive;
+  let dive1 = toMin(S.firstDive || "10:00"), anchorNote = "", mode = "Standard";
+  if(custom){
+    mode = "Non-standard";
+    const anc = $("anchor").value;
+    if(anc === "time") dive1 = toMin($("firstTime").value || S.firstDive || "10:00");
+    else {
+      const T = anc==="hw"?"HW":"LW";
       const want = tide.filter(e=>e.type===T && e.min>=8*60 && e.min<=15*60).sort((x,y)=>x.min-y.min)[0] || tide.filter(e=>e.type===T).sort((x,y)=>Math.abs(x.min-660)-Math.abs(y.min-660))[0];
-      if(want){ target = roundTo(want.min, 15); anchorNote = `Timings set so dive 1 enters the water at ${mode==="hw"?"high":"low"} water (${fmt(want.min)}).`; }
-      else anchorNote = `No ${mode==="hw"?"high":"low"} water found for this date – timings based on a ${fmt(target)} first dive.`;
+      if(want){ dive1 = roundTo(want.min, 15); anchorNote = `Non-standard schedule: dive 1 timed to ${anc==="hw"?"high":"low"} water (${fmt(want.min)}).`; }
+      else anchorNote = `No ${anc==="hw"?"high":"low"} water found for this date – dive 1 left at ${fmt(dive1)}.`;
     }
-    ({meet, depart, arrive, dive1} = backFrom(target));
   }
+  const onSite = dive1 - (arrive + (+S.buffer||0));          // minutes on site before dive 1, allowing travel leeway
+  const timing = onSite < 30 ? "r" : onSite < lead ? "a" : onSite > lead + 75 ? "a" : "g";
   const rows = [
     [meet, `Meet at ${out.meetQ}`],
     [depart, `Depart for site (about ${drive} min drive)`],
-    [arrive, "Arrive on site – unload, set up kit"],
-    [dive1 - brief, "Site briefing & equipment checks"],
-    [dive1 - 10, "Kit up & buddy checks"]
+    [arrive, "Arrive on site (estimated) – unload, set up kit"],
+    [Math.max(arrive, dive1 - brief), "Site briefing & equipment checks"],
+    [Math.max(arrive, dive1 - 10), "Kit up & buddy checks"]
   ];
   const dives = [], outs = []; let t = dive1;
   for(let i=1;i<=n;i++){
@@ -1002,13 +1017,12 @@ function schedule(out){
       rows.push([outT + 20, "Surface interval – break, warm up, change cylinders"]);
       rows.push([next - 25, `Dive ${i+1} briefing, kit up & buddy checks`]);
       t = next;
-    } else {
-      rows.push([outT, `Dive ${i} out of water – debrief & pack up`]);
-    }
+    } else rows.push([outT, `Dive ${i} out of water – debrief & pack up`]);
   }
   const end = outs[outs.length-1] + (+S.debrief||0);
   rows.push([end, "Leave site"]);
-  return {rows, dives, outs, meet, depart, arrive, brief: dive1 - brief, end, drive, anchorNote, gap, dive, lead};
+  rows.sort((x,y)=>x[0]-y[0]);
+  return {rows, dives, outs, meet, depart, arrive, brief: Math.max(arrive, dive1 - brief), end, drive, anchorNote, gap, dive, lead, onSite, timing, mode};
 }
 
 function summariseWeather(wx, from, to){
@@ -1099,6 +1113,9 @@ function buildPlan(out, roles){
   if(wx?.sunset && sch.end > toMin(wx.sunset)-30) flags.push(["", `The day ends at ${fmt(sch.end)}, close to or after sunset (${wx.sunset}). Consider fewer dives or an earlier first dive.`]);
   if(wx?.sunrise && sch.dives[0] < toMin(wx.sunrise)+20) flags.push(["", `Dive 1 (${fmt(sch.dives[0])}) starts close to or before sunrise (${wx.sunrise}). Expect low light – carry torches or start later.`]);
   if(out.meetFar) flags.push(["bad", `The meeting point was matched to “${(out.meetLoc?.label||"").split(",").slice(0,4).join(",")}”, ${sch.drive} minutes from the site. If that's the wrong place, add the town or postcode to the meeting point and generate again.`]);
+  if(sch.timing==="r") flags.push(["bad", `Meeting at ${fmt(sch.meet)} gets the group on site at about ${fmt(sch.arrive)}, only ${Math.max(0,sch.onSite)} min before dive 1 at ${fmt(sch.dives[0])} once travel leeway is allowed. Meet earlier or choose a non-standard schedule.`]);
+  else if(sch.timing==="a" && sch.onSite < sch.lead) flags.push(["", `Meeting at ${fmt(sch.meet)} allows about ${sch.onSite} min on site before dive 1 (${sch.lead} min recommended). Consider meeting ${Math.ceil((sch.lead-sch.onSite)/15)*15} min earlier.`]);
+  else if(sch.timing==="a") flags.push(["", `Meeting at ${fmt(sch.meet)} gets the group on site about ${Math.round(sch.onSite/15)*15} min before dive 1. You could meet later.`]);
   if(sch.meet < 6*60) flags.push(["", `This plan needs a very early start (meet at ${fmt(sch.meet)}). Consider a later first dive.`]);
   if(out.drive?.est) flags.push(["", "Travel time is an estimate – check the route before the day."]);
   groups.filter(g=>g.over).forEach(g=>flags.push(["bad", `Buddy ${g.i+1} is planned to ${g.given} m, deeper than the group's limit of ${g.limit} m set by ${g.limiting.join(", ")}. Reduce the depth or change the pairing.`]));
@@ -1109,7 +1126,7 @@ function buildPlan(out, roles){
   const outsT = sch.outs.map(fmt);
   const listJoin = a => a.length<=1 ? (a[0]||"") : a.slice(0,-1).join(", ")+" and "+a[a.length-1];
   const depthTxt = buddies.filter(b=>b.depth).map(b=>b.depth);
-  let summary = `The expedition to ${site.name} is planned for ${longDate(out.date)}. The group will meet at ${out.meetQ} at ${fmt(sch.meet)}, depart at ${fmt(sch.depart)} (approximately ${sch.drive} minutes' drive) and arrive on site by ${fmt(sch.arrive)}, with the site briefing and equipment checks at ${fmt(sch.brief)}. ${n===1?"One dive is":`${["","","Two","Three"][n]||n} dives are`} scheduled, entering the water at ${listJoin(diveTimes)}, each with up to ${sch.dive} minutes in the water${n>1?` and ${Math.floor(sch.gap/60)} hour${sch.gap%60?` ${sch.gap%60} minutes`:""} between leaving the water and the next entry to cover the debrief, a break, the next briefing and buddy checks`:""}. The last divers are out by ${outsT[outsT.length-1]}.`;
+  let summary = `The expedition to ${site.name} is planned for ${longDate(out.date)}. The group will meet at ${out.meetQ} at ${fmt(sch.meet)} and depart at ${fmt(sch.depart)} (approximately ${sch.drive} minutes' drive), arriving on site at about ${fmt(sch.arrive)}. The ${sch.mode==="Standard"?"standard club":"non-standard"} schedule has the site briefing and equipment checks at ${fmt(sch.brief)}. ${n===1?"One dive is":`${["","","Two","Three"][n]||n} dives are`} scheduled, entering the water at ${listJoin(diveTimes)}, each with up to ${sch.dive} minutes in the water${n>1?` and ${Math.floor(sch.gap/60)} hour${sch.gap%60?` ${sch.gap%60} minutes`:""} between leaving the water and the next entry to cover the debrief, a break, the next briefing and buddy checks`:""}. The last divers are out by ${outsT[outsT.length-1]}.`;
   if(notes) summary += ` ${notes.replace(/\.?$/,".")}`;
   if(depthTxt.length) summary += ` Buddy groups have maximum depths of ${listJoin([...new Set(depthTxt)])} metres.`;
   summary += " This plan sets out tide and weather information, access precautions, equipment requirements, team roles and emergency contacts to support the day's activities.";
@@ -1131,11 +1148,12 @@ function buildPlan(out, roles){
     } else {
       ["Wind","Rain","Temperature","Daylight"].forEach(k=>C.push([k,"Forecast not yet available","n"]));
     }
+    C.push(["Timing", `${sch.mode} · on site ~${fmt(sch.arrive)}, dive 1 ${fmt(sch.dives[0])}`, sch.timing]);
     C.push(["Sea state", risk.maxWave==null?"No wave data":risk.maxWave<0.1?"Calm":`Waves up to ${risk.maxWave.toFixed(1)} m`, risk.maxWave==null?"n":risk.maxWave>=1?"r":risk.maxWave>=0.5?"a":"g"]);
     C.push(["Tides", tideSrc==="admiralty"?"Admiralty times":tideSrc==="model"?"Estimate – confirm on EasyTide":"Not available – add manually", tideSrc==="admiralty"?"g":"a"]);
     C.push(["Divers & depths", !groups.length?"Pairings not entered":groups.some(g=>g.over)?"A group is planned beyond its grade limit":groups.some(g=>g.unknown.length)?"Some grades not recorded":"All groups within grade limits", !groups.length?"n":groups.some(g=>g.over)?"r":groups.some(g=>g.unknown.length)?"a":"g"]);
     const worst = C.some(c=>c[2]==="r")?"r":C.some(c=>c[2]==="a")?"a":"g";
-    const envRed = C.some(c=>c[2]==="r" && c[0]!=="Divers & depths");
+    const envRed = C.some(c=>c[2]==="r" && !["Divers & depths","Timing"].includes(c[0]));
     const verdict = worst==="g" ? "Conditions look suitable" : worst==="a" ? "Go with caution – review the amber items on arrival" : envRed ? "Consider postponing or moving to a sheltered site" : "Fix the plan before the dive – see the red item";
     const word = {g:"Good", a:"Check", r:"Action", n:"–"};
     H += `<div class="glance"><div class="verdict ${worst}">${esc(verdict)} <small>The Dive Marshal makes the final go/no-go decision on site.</small></div><div class="cards">${C.map(c=>`<div class="gc ${c[2]}"><b>${esc(c[0])}</b><span>${esc(c[1])}</span><em>${word[c[2]]}</em></div>`).join("")}</div></div>`;
@@ -1492,18 +1510,20 @@ function fillMeetList(){ $("meetList").innerHTML = store.get("meetPoints",["McDo
   fillMeetList();
   const nextSat = new Date(); nextSat.setDate(nextSat.getDate() + ((6 - nextSat.getDay() + 7) % 7 || 7));
   $("date").value = nextSat.toISOString().slice(0,10);
-  if(lf.meet) $("meet").value = lf.meet; if(lf.meetTime) $("meetTime").value = lf.meetTime;
   if(lf.numDives) $("numDives").value = lf.numDives;
-  if(lf.timing && lf.v === 15) $("timing").value = lf.timing;           // older saved forms default to the new first-dive mode
-  $("firstTime").value = (lf.v === 15 && lf.firstTime) || settings.firstDive || "10:00";
-  const timingUI = () => { const m = $("timing").value; $("w_meetTime").style.display = m==="meet" ? "" : "none"; $("w_firstTime").style.display = m==="meet" ? "none" : ""; $("firstTime").disabled = (m==="hw"||m==="lw"); };
-  $("timing").addEventListener("change", timingUI); timingUI();
+  ["meet","meetTime"].forEach(id=>$(id).value="");
+  // v1.6: meeting time & point are entered for each plan; schedule defaults to standard
+  $("firstTime").value = settings.firstDive || "10:00";
+  $("cDive").value = settings.maxTime || 45; $("cGap").value = settings.interval || 75;
+  $("timing").querySelector('option[value="std"]').textContent = `Standard – first dive ${settings.firstDive||"10:00"}`;
+  const timingUI = () => { const c = $("timing").value==="custom"; $("nonStd").style.display = c ? "" : "none"; $("w_firstTime").style.display = $("anchor").value==="time" ? "" : "none"; };
+  $("timing").addEventListener("change", timingUI); $("anchor").addEventListener("change", timingUI); timingUI();
   if(lf.buddies) $("buddies").value = lf.buddies; if(lf.kitNotes) $("kitNotes").value = lf.kitNotes;
   const roles = store.get("roles", {}); document.querySelectorAll("[data-role]").forEach(i=>{ if(roles[i.dataset.role]) i.value = roles[i.dataset.role]; });
 
   $("site").onchange = () => { updateSiteCard(); if($("site").value) setFieldError("site"); if($("site").value!=="__adhoc") setFieldError("adhocCoords"); refreshAlert(); };
   ["adhocCoords","adhocName"].forEach(id=>$(id).oninput = () => { updateSiteCard(); if(id==="adhocCoords" && parseCoords($(id).value)) { setFieldError("adhocCoords"); refreshAlert(); } });
-  ["date","meet"].forEach(id=>$(id).addEventListener("input", () => { if($(id).value.trim()){ setFieldError(id); refreshAlert(); } }));
+  ["date","meetTime","meet"].forEach(id=>$(id).addEventListener("input", () => { if($(id).value.trim()){ setFieldError(id); refreshAlert(); } }));
   function refreshAlert(){ if(!document.querySelector("#planForm .field-error")) $("formAlert").classList.remove("show"); }
   $("planForm").onsubmit = generate;
   $("btnPrint").onclick = () => window.print();

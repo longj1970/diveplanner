@@ -7,7 +7,7 @@ A single-page website that builds a full dive expedition plan from three inputs:
 | Section | Source |
 |---|---|
 | Drive time and departure time | Meeting point looked up on OpenStreetMap, route from OSRM |
-| Dive schedule | Works back from the first dive (default 10:00 in the water): arrive on site no more than 1 hour before, travel time from live routing plus 15 min leeway, meet 30 min before departure. Dives are up to 45 min, with the next entry 1 h 15 min after leaving the water. Fixed meeting time and high/low water modes are also available. All timings can be changed in Club settings |
+| Dive schedule | You enter the meeting time and meeting point for each plan. **Standard** schedule: dive 1 enters the water at 10:00, dives up to 45 min, next dive 1 h 15 min after leaving the water. **Non-standard**: set your own dive 1 time (or time it to high or low water), dive length and gap for that plan. Drive time comes from live routing; the plan estimates your arrival and warns if it leaves less than an hour on site before dive 1 |
 | Weather summary and hourly table (temperature, rain chance, wind, gusts, sunrise and sunset) | Open-Meteo forecast (about 16 days ahead) |
 | Tide times (HW/LW) and tide state at each dive | Admiralty UK Tidal API if a key is set; otherwise an estimate from the Open-Meteo ocean model |
 | Sea temperature and waves | Open-Meteo marine |
@@ -28,6 +28,8 @@ The plan can be edited on screen, then downloaded as a **Word (.docx)** file, pr
 
 ## Version history
 
+- **v1.6** – Meeting time and point are entered for each plan. Standard 10:00 schedule or a non-standard schedule. Arrival is checked against the first dive.
+- **v1.5.1** – Meeting point lookup fixed (searches near the dive site, handles misspellings) and shows the matched address.
 - **v1.5** – Schedule reworked around a 10:00 first dive: arrive on site 1 hour before, 1 h 15 min from leaving the water to the next entry, with debrief, break, briefing and buddy checks shown.
 - **v1.4** – iPhone app: installs from Safari with Add to Home Screen, phone layout with bottom tabs, Word file through the iOS share sheet, plans saved on the device and readable offline.
 - **v1.3** – Diver register with ScotSAC grade depth checks (CR-003) and conditions-at-a-glance panel (CR-004).
