@@ -700,13 +700,30 @@ function updateSiteCard(){
 /* ---------------- Live data ---------------- */
 const WMO = {0:"clear skies",1:"mainly clear",2:"partly cloudy",3:"overcast",45:"fog",48:"freezing fog",51:"light drizzle",53:"drizzle",55:"heavy drizzle",56:"freezing drizzle",57:"freezing drizzle",61:"light rain",63:"rain",65:"heavy rain",66:"freezing rain",67:"freezing rain",71:"light snow",73:"snow",75:"heavy snow",77:"snow grains",80:"rain showers",81:"heavy showers",82:"violent showers",85:"snow showers",86:"heavy snow showers",95:"thunderstorms",96:"thunderstorms with hail",99:"thunderstorms with hail"};
 
-async function geocode(q){
+/* v1.5.1 meeting point lookup.
+   1) Photon (OpenStreetMap, typo-tolerant) biased to the dive site, UK only.
+   2) Nominatim limited to ~150 km around the site, then UK-wide.
+   iPhone curly apostrophes are normalised. A result far from the site is returned with `far:true`. */
+async function geocode(q, near){
   if(!q) return null;
   const direct = parseCoords(q); if(direct) return {...direct, label:q};
-  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=gb&q=${encodeURIComponent(q)}`;
-  const r = await nominatim(url+"&accept-language=en-GB");
-  if(!r.length) return null;
-  return {lat:+r[0].lat, lng:+r[0].lon, label:r[0].display_name};
+  const qn = q.replace(/[\u2018\u2019\u02BC`´]/g, "'").replace(/\s+/g," ").trim();
+  const dist = c => near ? km(near.lat, near.lng, c.lat, c.lng) : 0;
+  const label = p => [p.name, [p.housenumber, p.street].filter(Boolean).join(" "), p.city||p.town||p.village||p.district||p.county, p.postcode].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i).join(", ");
+  try{
+    const bias = near ? `&lat=${near.lat}&lon=${near.lng}&location_bias_scale=0.3&zoom=9` : "";
+    const r = await getJSON(`https://photon.komoot.io/api/?q=${encodeURIComponent(qn)}&limit=8&lang=en${bias}`, {}, 10000);
+    const hits = (r.features||[]).filter(f=>(f.properties.countrycode||"").toUpperCase()==="GB")
+      .map(f=>({lat:f.geometry.coordinates[1], lng:f.geometry.coordinates[0], label:label(f.properties)}));
+    if(hits.length){ const best = hits[0]; best.d = dist(best); return best; }
+  }catch(e){ /* fall back to Nominatim */ }
+  const base = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=gb&accept-language=en-GB&q=${encodeURIComponent(qn)}`;
+  const tries = near ? [`${base}&bounded=1&viewbox=${near.lng-2.5},${near.lat+1.4},${near.lng+2.5},${near.lat-1.4}`, base] : [base];
+  for(const u of tries){
+    const r = await nominatim(u);
+    if(r.length){ const c = {lat:+r[0].lat, lng:+r[0].lon, label:r[0].display_name}; c.d = dist(c); return c; }
+  }
+  return null;
 }
 async function route(from, to){
   const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=false`;
@@ -898,9 +915,14 @@ async function generate(ev){
 
   const pMeet = (async()=>{
     try{
-      const m = await geocode(meetQ); if(!m) throw new Error("not found");
+      const m = await geocode(meetQ, site); if(!m) throw new Error("not found");
       out.meetLoc = m;
-      try{ out.drive = await route(m, site); stat("meet","ok",`Meeting point found – ${Math.round(out.drive.minutes)} min drive (${Math.round(out.drive.km*0.621)} miles)`); }
+      try{
+        out.drive = await route(m, site);
+        const short = (m.label||meetQ).split(",").slice(0,3).join(",");
+        if(out.drive.minutes > 150){ out.meetFar = true; stat("meet","warn",`Meeting point matched “${short}” – ${Math.round(out.drive.minutes)} min drive. Is that right? Add the town or postcode if not.`); }
+        else stat("meet","ok",`Meeting point: ${short} – ${Math.round(out.drive.minutes)} min drive (${Math.round(out.drive.km*0.621)} miles)`);
+      }
       catch(e){ out.drive = {minutes: km(m.lat,m.lng,site.lat,site.lng)*1.4/0.9, km: km(m.lat,m.lng,site.lat,site.lng)*1.4, est:true}; stat("meet","warn","Drive time estimated (routing service unavailable)"); }
     }catch(e){ stat("meet","warn","Couldn't locate the meeting point – travel time assumed 60 min"); out.drive = {minutes:60, est:true}; }
   })();
@@ -1076,6 +1098,7 @@ function buildPlan(out, roles){
   if(wx && wx.gust>=35) flags.push(["bad", `Strong gusts (${wx.gust} mph) forecast – consider a sheltered alternative site.`]);
   if(wx?.sunset && sch.end > toMin(wx.sunset)-30) flags.push(["", `The day ends at ${fmt(sch.end)}, close to or after sunset (${wx.sunset}). Consider fewer dives or an earlier first dive.`]);
   if(wx?.sunrise && sch.dives[0] < toMin(wx.sunrise)+20) flags.push(["", `Dive 1 (${fmt(sch.dives[0])}) starts close to or before sunrise (${wx.sunrise}). Expect low light – carry torches or start later.`]);
+  if(out.meetFar) flags.push(["bad", `The meeting point was matched to “${(out.meetLoc?.label||"").split(",").slice(0,4).join(",")}”, ${sch.drive} minutes from the site. If that's the wrong place, add the town or postcode to the meeting point and generate again.`]);
   if(sch.meet < 6*60) flags.push(["", `This plan needs a very early start (meet at ${fmt(sch.meet)}). Consider a later first dive.`]);
   if(out.drive?.est) flags.push(["", "Travel time is an estimate – check the route before the day."]);
   groups.filter(g=>g.over).forEach(g=>flags.push(["bad", `Buddy ${g.i+1} is planned to ${g.given} m, deeper than the group's limit of ${g.limit} m set by ${g.limiting.join(", ")}. Reduce the depth or change the pairing.`]));
@@ -1158,7 +1181,7 @@ function buildPlan(out, roles){
   if(ext.length) H += `<p>${sch.dives.map((d,i)=>`Dive ${i+1} (${fmt(d)}): tide ${esc(tideStateAt(ext,d))}.`).join(" ")}</p>`;
 
   H += `<h2>Dive Schedule</h2><table class="sched"><tbody>${sch.rows.map(r=>`<tr><td>${fmt(r[0])}</td><td>${esc(r[1])}</td></tr>`).join("")}</tbody></table>`;
-  H += `<p class="src">Drive time ${sch.drive} min${out.drive?.km?` (${Math.round(out.drive.km*0.621)} miles)`:""} plus ${S.buffer} min leeway. Arrive no more than ${sch.lead} min before dive 1; next entry ${sch.gap} min after leaving the water. Change these in Club settings.</p>`;
+  H += `<p class="src">${out.meetLoc?.label?`Meeting point located at ${esc(out.meetLoc.label.split(",").slice(0,5).join(","))}. `:""}Drive time ${sch.drive} min${out.drive?.km?` (${Math.round(out.drive.km*0.621)} miles)`:""} plus ${S.buffer} min leeway. Arrive no more than ${sch.lead} min before dive 1; next entry ${sch.gap} min after leaving the water. Change these in Club settings.</p>`;
   H += `<h3>Dive information</h3>`;
   if(notes) H += `<p><b>Objectives:</b> ${esc(notes)}</p>`;
   H += `<p>${esc(site.route || "Route to be confirmed at the site briefing. Review the dive description and diving notes on divemap.uk for this site, then agree bearing, depth and turn criteria for each buddy pair.")}</p>`;
