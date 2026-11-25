@@ -1,7 +1,7 @@
 /* Bo'ness Sub Aqua Club – Dive Planner service worker
    Keeps the app itself available offline (so saved plans open at a dive site with no signal).
    Live data (weather, tides, routes, maps) always goes to the network and is never cached. */
-const VERSION = "dive-planner-v1.9.1";
+const VERSION = "dive-planner-v1.10";
 const SHELL = [
   "./",
   "./index.html",

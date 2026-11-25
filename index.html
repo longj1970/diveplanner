@@ -180,6 +180,16 @@ button,a,select,input{touch-action:manipulation;-webkit-tap-highlight-color:tran
 .sharebar.show{display:flex}
 .sharebar button{background:#fff;color:var(--navy);border:none}
 /* ---------- Training (v1.7) ---------- */
+.ttabs{display:grid;grid-template-columns:1fr 1fr;border:1.5px solid var(--sea);border-radius:10px;overflow:hidden;margin:0 0 14px}
+.ttabs button{border:none;border-radius:0;background:#fff;color:var(--sea);font-weight:700;min-height:44px}
+.ttabs button + button{border-left:1.5px solid var(--sea)}
+.ttabs button.on{background:var(--sea);color:#fff}
+.inplan{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:var(--foam);color:var(--sea);border-radius:99px;padding:2px 8px;margin-left:6px;vertical-align:middle}
+.chain{display:flex;flex-direction:column;align-items:center;gap:0;margin:6px 0 4px}
+.chain div{background:#fff;border:1.5px solid var(--sea);border-radius:8px;padding:8px 12px;text-align:center;width:min(100%,420px);font-size:14px}
+.chain div b{display:block;color:var(--navy)}
+.chain i{font-style:normal;color:var(--teal);font-size:18px;line-height:1.1}
+.train-src{font-size:12.5px;color:var(--muted);margin-top:14px}
 .train-intro{background:var(--foam);border-radius:10px;padding:12px 14px;margin:0 0 14px;font-size:15px}
 .tsec{border:1px solid var(--line);border-radius:10px;margin:8px 0;background:#fff}
 .tsec summary{list-style:none;cursor:pointer;padding:12px 14px;display:flex;align-items:center;gap:10px;font-weight:700;color:var(--navy)}
@@ -1477,21 +1487,129 @@ const TRAINING = {
     { q:"Who makes the final go/no-go decision on the day?", o:["The Dive Marshal, after assessing conditions on site","The planner's conditions panel","Whoever arrives first","Each pair decides for themselves"], a:0, e:"The conditions panel is a guide. The Dive Marshal assesses conditions on site and makes the final decision; anyone with concerns should raise them with the Safety Officer and Dive Marshal." }
   ]
 };
-let quizState = null;
+/* ---------------- v1.10: Expedition roles training ----------------
+   Paraphrased from the ScotSAC Master Diver Lecture Notes – Lecture 7 (Expedition Organisation)
+   and the first aid for DCS guidance. Edit freely. `plan:true` = the role appears in the generated plan. */
+TRAINING.rolesIntro = "Every expedition needs a core of experienced divers to run the day and look after less experienced members. Everyone can take an active role – newer members learn by doing it with support. Each role below says what the job is, what to do before the trip, on the day and if something goes wrong, and who the role answers to.";
+TRAINING.roles = [
+  { t:"Expedition Organiser", plan:true,
+    purpose:"Makes sure everything that needs doing gets done – not by doing it all, but by delegating to people with the right skills.",
+    before:["Choose sites to suit the divers, the time available and the type of diving (shore, RHIB or hard boat), with back-up sites for bad weather","Find out depths, tides and slack water, currents, access, parking and any permission needed","Arrange boats, compressor, club kit and transport – and how it all gets to the site","Start the risk assessment as soon as planning begins","Collect each diver's qualifications, experience and next of kin, and make sure everyone knows the costs","Check depth limits and that deeper or demanding dives only include suitably qualified, experienced divers"],
+    day:["Check the latest local forecast before leaving","Liaise with skippers, marinas and launch sites on arrival","Appoint the Dive Marshal, Safety Officer and other roles","Brief everyone on the pairs, site, risks, dive profile and navigation","Re-plan pairs when divers drop out, and decide early to delay, alter or abandon diving if the weather turns"],
+    wrong:["Treatment of anyone ill or injured takes priority over all diving","With the Safety Officer, make sure any incident is fully recorded","Can refuse permission to dive to anyone who is unwell or unsafe"],
+    to:"The Branch Diving Officer. Buddy pairs and support roles answer to the Organiser." },
+  { t:"Dive Marshal", plan:true,
+    purpose:"Keeps an accurate log of all diving on the day – ideally one person, so nothing is missed.",
+    before:["Prepare the dive slate or log sheet (the planner prints one pre-filled)","Know the planned max dive time and the overdue procedure"],
+    day:["Record location, date, weather and sea conditions","Before entry: pairs, their qualifications, air in, planned max depth and time in","On exit: time out, air out, actual max depth, bottom time and any decompression or safety stops","Make sure every pair is back – watch due-out times","On a hard boat the skipper may keep a log too, but the Dive Marshal still keeps the club's log; rewrite a wet RHIB log onto a master sheet back on shore"],
+    wrong:["Start the missing diver procedure when a pair is overdue","Pass the casualty's dive profile from the log to the Coastguard, paramedics and the hyperbaric unit"],
+    to:"The Expedition Organiser" },
+  { t:"Safety Officer", plan:true,
+    purpose:"Handles and co-ordinates any incident or accident.",
+    before:["Know the emergency contacts – Coastguard, the hyperbaric unit (0345 408 6008 in Scotland), doctors – and how to reach them, including where mobile signal works","Complete the risk assessment sheets"],
+    day:["Brief all divers on the hazards and control measures","Re-assess risks on arrival and as conditions change"],
+    wrong:["Take charge of the incident and co-ordinate the response","Make sure the incident is recorded and reported through the BDO on the ScotSAC incident form"],
+    to:"The Expedition Organiser" },
+  { t:"First Aider", plan:true,
+    purpose:"Provides first aid to anyone hurt or unwell, and records how the casualty changes over time.",
+    before:["Keep first aid (and ideally Heart Start / CPR) training up to date","Know where the first aid kit is and check its contents","Bring a copy of the NHS diving casualty checklist"],
+    day:["Show everyone where the first aid kit is","Watch for divers who are cold, seasick or unwell"],
+    wrong:["Treat injuries and support the casualty until help arrives","Record symptoms and when they started, using the casualty checklist and simple neurological checks","Don't delay calling for help if DCS is suspected – the first hour after surfacing matters most"],
+    to:"The Safety Officer during an incident" },
+  { t:"Oxygen Administrator", plan:true,
+    purpose:"Gives 100% oxygen to a casualty with suspected decompression illness or lung injury.",
+    before:["Hold a current oxygen administration qualification – oxygen should only be given by trained people","Check the oxygen kit is complete and the cylinder is full"],
+    day:["Keep the oxygen kit ready and close to the entry point"],
+    wrong:["Give 100% oxygen as soon as possible and keep going until handed over","Keep the casualty lying flat; give water if they are fully conscious","Tell paramedics the diver may have DCS – Entonox must not be given to divers with suspected DCS"],
+    to:"The Safety Officer during an incident" },
+  { t:"Branch Diving Officer (BDO)", plan:true,
+    purpose:"Holds ultimate responsibility for safety and training in the branch.",
+    before:["Sets the branch rules and diving practice the expedition must follow","Must be satisfied with all diving and training carried out"],
+    day:["May not attend – the Expedition Organiser acts within the BDO's framework"],
+    wrong:["Receives incident reports and passes them to ScotSAC on the incident reporting form","Can refuse permission to dive where safety may be compromised – decisions may not please everyone"],
+    to:"ScotSAC, through the National Diving Officer" },
+  { t:"Standby Diver", plan:true,
+    purpose:"Stays on the surface fully kitted, ready to help divers in the water if a rescue or search is needed.",
+    before:["Must be suitably experienced and qualified","Should have little or no bottom-time penalty from earlier dives"],
+    day:["Keep full kit ready to hand throughout each dive","When diving in two waves, the second wave can cover the first"],
+    wrong:["Enter the water to assist or search when directed by the Dive Marshal or Safety Officer"],
+    to:"The Dive Marshal" },
+  { t:"Dive Leader (in each buddy pair)", plan:false,
+    purpose:"Primarily responsible for the safety of the dive – usually the more experienced diver in the pair.",
+    before:["Pairs are usually agreed between the divers or set by the Organiser","The safest pairing puts the most experienced with the least experienced – also consider diving style, kit, air use, depth wanted and training needs","For deep or demanding dives both divers must be experienced and built up for it"],
+    day:["Leads the dive and the navigation","Keep pairs together for the day so profiles match; if pairs change, plan the next dive on the greater decompression penalty of the two"],
+    wrong:["Follow the lost-buddy procedure and report any problem to the Expedition Organiser and Safety Officer"],
+    to:"The Expedition Organiser" },
+  { t:"Boat Handler / Skipper", plan:true, boat:true,
+    purpose:"Drives the boat to and from the site and picks up divers – which takes great care with people in the water.",
+    before:["Must be suitably qualified and experienced at picking up divers","Arrange towing and launching (a vehicle with a tow bar); check the slipway is usable at the tide","Fuel the boat and check it"],
+    day:["Tell the Coastguard where you are diving, how many divers and when diving should finish; raise the dive flag","Never leave divers without surface cover or the boat unattended at anchor","Never drive fast where there are divers in the water","Track divers by their DSMBs; call the Coastguard on VHF Channel 16 when diving is finished and lower the flag"],
+    wrong:["Make the VHF Channel 16 Mayday or Pan-Pan call","Must answer a request for help at sea – but not if it leaves your own divers without cover"],
+    to:"The Expedition Organiser. On a charter hard boat the skipper is not in charge of the diving – the dive party is." },
+  { t:"Equipment Officer", plan:false,
+    purpose:"Looks after all club equipment the expedition needs.",
+    before:["Make sure the kit gets to the dive site"],
+    day:["Make sure it all comes back safely"],
+    wrong:["Arrange repairs to anything damaged"],
+    to:"The Expedition Organiser" },
+  { t:"Compressor Operator", plan:false,
+    purpose:"Fills cylinders when the expedition uses a portable or coin-operated compressor.",
+    before:["Understand the safety and legal requirements of compressor operation"],
+    day:["Check cylinder test dates and working pressures before filling","Allow plenty of time – filling a group's cylinders is slow and noisy"],
+    wrong:["A wrongly filled cylinder can ruin a dive or endanger a diver – if in doubt, don't fill it"],
+    to:"The Expedition Organiser" }
+];
+TRAINING.chain = [["Buddy pairs","responsible for each other"],["Expedition Organiser","co-ordinates the expedition; support roles answer here"],["Branch Diving Officer","sets branch rules and practice"],["ScotSAC","National Diving Officer, National Diving Council and Board"]];
+TRAINING.rolesQuiz = [
+  { q:"What is the main purpose of the Dive Marshal?", o:["To keep an accurate log of all the diving","To drive the boat","To fill the cylinders","To choose the dive site"], a:0, e:"The Dive Marshal keeps the dive log – ideally one person, so nothing is missed." },
+  { q:"Whose main duty is to handle and co-ordinate any incident or accident?", o:["The Safety Officer","The Equipment Officer","The Compressor Operator","The newest diver"], a:0, e:"The Safety Officer co-ordinates incidents, knows the emergency contacts and completes the risk assessment sheets." },
+  { q:"Who appoints the Dive Marshal and Safety Officer for an expedition?", o:["The Expedition Organiser","The boat skipper","The Coastguard","Each buddy pair"], a:0, e:"The Expedition Organiser appoints the other roles and delegates tasks to people with the right skills." },
+  { q:"Who holds ultimate responsibility for safety and training in the branch?", o:["The Branch Diving Officer (BDO)","The Dive Marshal","The Expedition Organiser","The hard boat skipper"], a:0, e:"The BDO is ultimately responsible within the branch, under ScotSAC's National Diving Officer." },
+  { q:"Which best describes a Standby Diver?", o:["Fully kitted on the surface, experienced, with little or no bottom-time penalty","The first diver into the water","A diver waiting in the car","Someone who only dives if the weather improves"], a:0, e:"Standby divers stay ready to enter the water to help in a rescue or search. In two waves, the second wave can cover the first." },
+  { q:"Which of these must the dive log record for every diver?", o:["Entry and exit times, air in and air out, and maximum depth","Their favourite dive site","Their car registration","How long they've been a member"], a:0, e:"The log also records location, date, weather, sea conditions, pairs and qualifications, bottom time and any stops." },
+  { q:"What is usually the safest way to pair divers?", o:["Put the most experienced with the least experienced","Put the two least experienced together","Pair people by who arrived first","Let the newest diver lead"], a:0, e:"Experienced divers paired with less experienced ones is the most common and safest approach; also consider style, kit, air use and training needs." },
+  { q:"On a charter hard boat, who is in charge of the diving?", o:["The dive party – the skipper is not in charge of the diving","The skipper","The Coastguard","Whoever owns the most kit"], a:0, e:"Skippers do much of the risk assessment, but the divers remain responsible – including their own emergency equipment." },
+  { q:"Paramedics offer Entonox for pain to a diver with suspected DCS. What should happen?", o:["Tell them it must not be given to divers with suspected DCS","Accept it – it will help","Give it with oxygen","Only give half the dose"], a:0, e:"Entonox must not be given to divers with suspected DCS. Keep them on 100% oxygen." },
+  { q:"How should a diving incident be reported within ScotSAC?", o:["Through the BDO, on the ScotSAC incident reporting form","Only by social media","It doesn't need reporting if nobody was hurt","Directly to the hard boat skipper"], a:0, e:"Incidents are reported confidentially via the BDO so others can learn from them." }
+];
+
+let quizState = null, trainTab = "plan";
 function shuffle(a){ a = a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
-function openTraining(){
-  const T = TRAINING, last = store.get("quizBest", null);
-  $("trainBody").innerHTML = `<p class="train-intro">${esc(T.intro)}</p>` +
-    T.sections.map((x,i)=>`<details class="tsec"><summary><span class="num">${i+1}</span>${esc(x.t)}</summary><div class="tbody">
-      <h4>What goes in it</h4><ul>${x.what.map(w=>`<li>${esc(w)}</li>`).join("")}</ul>
-      <h4>Why it matters</h4><p>${esc(x.why)}</p>
-      <h4>Where the planner gets it</h4><p class="muted">${esc(x.src)}</p></div></details>`).join("") +
-    `<div class="quiz" id="quiz"><h3>Check your understanding</h3><p class="muted" style="margin:0 0 10px">10 multiple-choice questions. Pass mark 8/10.${last?` Your best score on this device: <b>${last.score}/10</b> (${esc(last.date)}).`:""}</p><button type="button" class="primary" id="quizStart" style="width:auto;padding:10px 22px">Start the quiz</button></div>`;
-  $("quizStart").onclick = startQuiz;
-  $("trainModal").classList.add("open");
+const QUIZZES = { plan:{bank:()=>TRAINING.quiz, key:"quizBest", title:"Check your understanding", passMsg:"You understand what goes into a club dive plan."},
+                  roles:{bank:()=>TRAINING.rolesQuiz, key:"quizBestRoles", title:"Check your understanding of the roles", passMsg:"You understand the expedition roles and who does what."} };
+function quizBox(kind){
+  const Q = QUIZZES[kind], last = store.get(Q.key, null);
+  return `<div class="quiz" id="quiz"><h3>${esc(Q.title)}</h3><p class="muted" style="margin:0 0 10px">10 multiple-choice questions. Pass mark 8/10.${last?` Your best score on this device: <b>${last.score}/10</b> (${esc(last.date)}).`:""}</p><button type="button" class="primary" id="quizStart" style="width:auto;padding:10px 22px">Start the quiz</button></div>`;
 }
-function startQuiz(){
-  quizState = { qs: shuffle(TRAINING.quiz).map(q=>{ const opts = shuffle(q.o.map((t,i)=>({t, right:i===q.a}))); return {...q, opts}; }), i:0, score:0, answers:[] };
+function renderTraining(){
+  const T = TRAINING; let H = `<div class="ttabs" role="tablist"><button type="button" data-tt="plan" class="${trainTab==="plan"?"on":""}">Dive plan</button><button type="button" data-tt="roles" class="${trainTab==="roles"?"on":""}">Expedition roles</button></div>`;
+  if(trainTab==="plan"){
+    H += `<p class="train-intro">${esc(T.intro)}</p>` +
+      T.sections.map((x,i)=>`<details class="tsec"><summary><span class="num">${i+1}</span>${esc(x.t)}</summary><div class="tbody">
+        <h4>What goes in it</h4><ul>${x.what.map(w=>`<li>${esc(w)}</li>`).join("")}</ul>
+        <h4>Why it matters</h4><p>${esc(x.why)}</p>
+        <h4>Where the planner gets it</h4><p class="muted">${esc(x.src)}</p></div></details>`).join("") + quizBox("plan");
+  } else {
+    const li = a => `<ul>${a.map(w=>`<li>${esc(w)}</li>`).join("")}</ul>`;
+    H += `<p class="train-intro">${esc(T.rolesIntro)}</p>` +
+      `<details class="tsec" open><summary><span class="num">↕</span>Chain of command</summary><div class="tbody"><div class="chain">${T.chain.map((c,i)=>`${i?"<i>↓</i>":""}<div><b>${esc(c[0])}</b>${esc(c[1])}</div>`).join("")}</div><p>Support roles (Dive Marshal, boat handlers, compressor operators and so on) answer to the Expedition Organiser who gave them the task – and to the rest of the party to do it properly. Forgetting fuel or filling a cylinder wrongly can spoil a dive or put divers at risk.</p></div></details>` +
+      T.roles.map((r,i)=>`<details class="tsec"><summary><span class="num">${i+1}</span>${esc(r.t)}${r.plan?`<span class="inplan">${r.boat?"boat dives":"in the plan"}</span>`:""}</summary><div class="tbody">
+        <p><b>${esc(r.purpose)}</b></p>
+        <h4>Before the trip</h4>${li(r.before)}
+        <h4>On the day</h4>${li(r.day)}
+        <h4>If something goes wrong</h4>${li(r.wrong)}
+        <h4>Responsible to</h4><p>${esc(r.to)}</p></div></details>`).join("") +
+      quizBox("roles") +
+      `<p class="train-src">Based on the ScotSAC Master Diver Lecture Notes (Lecture 7 Expedition Organisation, and first aid for DCS). The notes give the older 0845 number for the hyperbaric unit; the current Scottish number is 0345 408 6008.</p>`;
+  }
+  $("trainBody").innerHTML = H;
+  $("trainBody").querySelectorAll("[data-tt]").forEach(b=>b.onclick=()=>{ trainTab = b.dataset.tt; quizState = null; renderTraining(); $("trainModal").scrollTop = 0; });
+  $("quizStart").onclick = () => startQuiz(trainTab);
+}
+function openTraining(){ renderTraining(); $("trainModal").classList.add("open"); }
+function startQuiz(kind){
+  kind = kind || trainTab;
+  quizState = { kind, qs: shuffle(QUIZZES[kind].bank()).map(q=>{ const opts = shuffle(q.o.map((t,i)=>({t, right:i===q.a}))); return {...q, opts}; }), i:0, score:0, answers:[] };
   renderQ();
   $("quiz").scrollIntoView({behavior:"smooth", block:"start"});
 }
@@ -1512,14 +1630,14 @@ function answerQ(k){
   $("qnext").focus({preventScroll:true});
 }
 function finishQuiz(){
-  const st = quizState, pass = st.score >= 8;
-  const best = store.get("quizBest", null);
-  if(!best || st.score >= best.score) store.set("quizBest", {score:st.score, date:new Date().toLocaleDateString("en-GB")});
+  const st = quizState, Q = QUIZZES[st.kind], pass = st.score >= 8;
+  const best = store.get(Q.key, null);
+  if(!best || st.score >= best.score) store.set(Q.key, {score:st.score, date:new Date().toLocaleDateString("en-GB")});
   $("quiz").innerHTML = `<h3>${pass?"Well done – passed":"Not passed yet"}</h3><div class="qscore">${st.score}/10</div>
-    <p>${pass?"You understand what goes into a club dive plan. Ask the Diving Officer to record your result.":"Review the sections for the questions you missed, then try again. The pass mark is 8/10."}</p>
+    <p>${pass?esc(Q.passMsg)+" Ask the Diving Officer to record your result.":"Review the sections for the questions you missed, then try again. The pass mark is 8/10."}</p>
     <div class="qreview">${st.answers.map((a,i)=>`<div><span class="${a.ok?"t":"x"}">${a.ok?"✓":"✗"}</span> ${i+1}. ${esc(a.q)}${a.ok?"":`<br><span class="muted">Your answer: ${esc(a.chosen)} · Correct: <b>${esc(a.right)}</b></span>`}</div>`).join("")}</div>
     <p style="margin-top:12px"><button type="button" class="small" id="qagain" style="background:var(--sea);color:#fff;border-color:var(--sea)">Try again</button></p>`;
-  $("qagain").onclick = startQuiz;
+  $("qagain").onclick = () => startQuiz(st.kind);
 }
 
 /* ---------------- v1.4: views, saved plans, sharing ---------------- */

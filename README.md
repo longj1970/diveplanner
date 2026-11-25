@@ -28,6 +28,7 @@ The plan can be edited on screen, then downloaded as a **Word (.docx)** file, pr
 
 ## Version history
 
+- **v1.10** – Training now has an **Expedition roles** tab, based on the ScotSAC Master Diver Lecture Notes. It covers the chain of command, a card for each of 11 roles (purpose, before the trip, on the day, if something goes wrong, responsible to) and a second 10-question quiz.
 - **v1.9** – Shore or boat dive choice (preset from the site library). Boat dives add the launch point and the boat and skipper, drive time to the launch point, boat hazards, VHF Channel 16 in the Emergency Action Plan, boat kit, a skipper role and a boat cover note on the slate.
 - **v1.8** – Buddy pairings entered as rows (diver name, pair number, optional max depth), starting with two rows, with **+ Add diver** for more. Divers without a buddy are flagged.
 - **v1.7** – Training section: a guide to each part of the dive plan and a 10-question multiple-choice quiz (pass mark 8/10). Fixed full-screen panels on iPhone.
@@ -78,6 +79,8 @@ You can also double-click `index.html` to run it from your own computer.
 ## Training
 
 The **Training** button (or the **Learn** tab on a phone) opens a guide for new members. It covers each of the 13 sections of a dive plan: what goes in it, why it matters and where the planner gets the information. It ends with a 10-question multiple-choice quiz, with feedback after each answer and a score at the end. The pass mark is 8/10, and each device remembers its best score. Questions and answers are shuffled each time.
+
+A second tab, **Expedition roles**, explains the chain of command and each role. The roles covered are Expedition Organiser, Dive Marshal, Safety Officer, First Aider, Oxygen Administrator, BDO, Standby Diver, Dive Leader, Boat Handler / Skipper, Equipment Officer and Compressor Operator. The tab has its own 10-question quiz and best score. The content is based on the ScotSAC Master Diver Lecture Notes (Lecture 7, Expedition Organisation, and first aid for DCS), written in plain language.
 
 The Diving Officer can edit the guide and the questions in the `TRAINING` section near the top of the script in `index.html`.
 
