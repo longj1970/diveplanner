@@ -28,6 +28,7 @@ The plan can be edited on screen, then downloaded as a **Word (.docx)** file, pr
 
 ## Version history
 
+- **v1.8** – Buddy pairings entered as rows (diver name, pair number, optional max depth), starting with two rows, with **+ Add diver** for more. Divers without a buddy are flagged.
 - **v1.7** – Training section: a guide to each part of the dive plan and a 10-question multiple-choice quiz (pass mark 8/10). Fixed full-screen panels on iPhone.
 - **v1.6** – Meeting time and point are entered for each plan. Standard 10:00 schedule or a non-standard schedule. Arrival is checked against the first dive.
 - **v1.5.1** – Meeting point lookup fixed (searches near the dive site, handles misspellings) and shows the matched address.

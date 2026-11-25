@@ -142,6 +142,13 @@ body:has(.modal.open){overflow:hidden}
 .hz{display:grid;grid-template-columns:1.2fr 1.2fr 60px 60px 2fr 30px;gap:6px;margin:4px 0}
 .hz input{padding:6px}
 /* CR-003 diver register */
+.brow{display:grid;grid-template-columns:1fr 78px 86px 36px;gap:6px;align-items:center;margin:6px 0}
+.brow.head{margin:8px 0 0;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.brow input{padding:8px 10px}
+.brow .rm{padding:0;height:36px;min-height:0;width:36px;font-size:18px;line-height:1;color:var(--muted)}
+.brow .rm:disabled{visibility:hidden}
+.addrow{margin-top:4px}
+@media (max-width:760px){.brow{grid-template-columns:1fr 64px 72px 36px}.brow input{padding:10px 8px}}
 .buddycheck{font-size:13.5px;margin-top:6px}
 .buddycheck div{padding:4px 8px;border-radius:6px;margin-top:4px;border-left:4px solid #c3ccd3;background:#f6f8fa}
 .buddycheck .ok{border-color:var(--ok);background:#eef8f1}
@@ -368,8 +375,12 @@ body.offline .offline-pill{display:inline-block}
           <div><label>BDO</label><input data-role="BDO"></div>
           <div><label>Standby Diver</label><input data-role="Standby Diver"></div>
         </div>
-        <label for="buddies">Buddy pairings – one group per line, max depth after “|” (optional)</label>
-        <textarea id="buddies" placeholder="Alan, Jason, Adrian | 25&#10;Russell, Neil, Julie (tbc) | 20"></textarea>
+        <label>Buddy pairings</label>
+        <p class="muted" style="font-size:13px;margin:0">One row per diver. Divers with the same pair number dive together. Max depth is optional – if left blank, the group's grade limit is used.</p>
+        <div class="brow head" aria-hidden="true"><span>Diver name</span><span>Pair no.</span><span>Max (m)</span><span></span></div>
+        <div id="buddyRows"></div>
+        <datalist id="diverNames"></datalist>
+        <button type="button" class="small addrow" id="addDiver">+ Add diver</button>
         <div class="buddycheck" id="buddyCheck"></div>
         <button type="button" class="linkbtn" id="openDivers">Add or edit divers and their grades</button>
         <label for="kitNotes">Who is bringing club kit?</label>
@@ -685,20 +696,23 @@ function assessGroups(buddies, siteMax){
     if(planned!=null && siteMax && given==null) planned = Math.min(planned, siteMax);
     const over = given!=null && limit!=null && given>limit;
     const status = over ? "bad" : (unknown.length ? "warn" : "ok");
-    return {i, names:b.names, members, limit, limiting, unknown, given, planned, over, status};
+    return {i, pair: b.pair || i+1, names:b.names, members, limit, limiting, unknown, given, planned, over, status};
   });
 }
 const memberTag = m => m.d ? `${m.name} (${m.grade?m.grade.short:"?"}${m.limit!=null?` ${m.limit} m`:""})` : m.name;
 function renderBuddyCheck(){
   const el = $("buddyCheck"); if(!el) return;
   const site = currentSite();
-  const groups = assessGroups(parseBuddies($("buddies").value), site?.maxDepth);
+  const buddies = parseBuddies();
+  const groups = assessGroups(buddies, site?.maxDepth);
   el.innerHTML = groups.map(g=>{
-    let t = `<b>Buddy ${g.i+1}:</b> ${g.members.map(m=>esc(memberTag(m))).join(", ")}`;
+    let t = `<b>Pair ${g.pair}:</b> ${g.members.map(m=>esc(memberTag(m))).join(", ")}`;
     if(g.over) t += ` – planned ${g.given} m is deeper than the group limit of ${g.limit} m (${esc(g.limiting.join(", "))})`;
     else if(g.limit!=null) t += ` → group limit ${g.limit} m${g.planned!=null?`, planned ${g.planned} m`:""}`;
     if(g.unknown.length) t += ` · grade not recorded for ${esc(g.unknown.map(m=>m.name).join(", "))}`;
-    return `<div class="${g.status}">${t}</div>`;
+    const solo = g.members.length < 2;
+    if(solo) t += ` · needs a buddy`;
+    return `<div class="${solo && g.status==="ok" ? "warn" : g.status}">${t}</div>`;
   }).join("");
 }
 function dvRow(d={name:"",grade:"sport",own:"",u14:false}){
@@ -710,7 +724,7 @@ function dvRow(d={name:"",grade:"sport",own:"",u14:false}){
 function openDivers(){ $("dvRows").innerHTML=""; (divers.length?divers:[undefined]).forEach(d=>dvRow(d)); $("diversModal").classList.add("open"); }
 function saveDivers(){
   divers = [...$("dvRows").children].map(r=>{ const [n,g,o] = r.querySelectorAll("input,select"); return {name:n.value.trim(), grade:g.value, own:o.value.trim(), u14:r.querySelector("input[type=checkbox]").checked}; }).filter(d=>d.name);
-  store.set("divers", divers); $("diversModal").classList.remove("open"); renderBuddyCheck(); toast(`${divers.length} diver${divers.length===1?"":"s"} saved`);
+  store.set("divers", divers); $("diversModal").classList.remove("open"); fillDiverNames(); renderBuddyCheck(); toast(`${divers.length} diver${divers.length===1?"":"s"} saved`);
 }
 
 /* ---------------- Site selector ---------------- */
@@ -955,7 +969,7 @@ async function generate(ev){
   // remember meeting points & team
   const mp = store.get("meetPoints", []); if(!mp.includes(meetQ)){ mp.unshift(meetQ); store.set("meetPoints", mp.slice(0,15)); fillMeetList(); }
   const roles = {}; document.querySelectorAll("[data-role]").forEach(i=>roles[i.dataset.role]=i.value.trim()); store.set("roles", roles);
-  store.set("lastForm", {v:16, site:$("site").value, numDives:$("numDives").value, timing:$("timing").value, buddies:$("buddies").value, kitNotes:$("kitNotes").value});
+  store.set("lastForm", {v:16, site:$("site").value, numDives:$("numDives").value, timing:$("timing").value, buddyRows:getBuddyRows(), kitNotes:$("kitNotes").value});
 
   stat("meet","run","Finding meeting point…");
   stat("wx","run","Fetching weather forecast…");
@@ -1125,9 +1139,51 @@ function buildRisks(out, wx, sch){
   return {rows:R, sst, maxWave};
 }
 
-function parseBuddies(txt){
-  return txt.split(/\n+/).map(l=>l.trim()).filter(Boolean).map(l=>{ const [names, depth] = l.split("|"); return {names:names.split(/[,;]+/).map(s=>s.trim()).filter(Boolean), depth:(depth||"").trim()}; });
+/* v1.8 buddy pairings: one row per diver (name, pair number, max depth). Starts with 2 rows. */
+function buddyRowEl(r={name:"",pair:"",depth:""}){
+  const d = document.createElement("div"); d.className = "brow";
+  d.innerHTML = `<input class="bn" list="diverNames" placeholder="Diver name" value="${esc(r.name)}" aria-label="Diver name" autocomplete="off">`+
+    `<input class="bp" type="number" min="1" max="20" inputmode="numeric" placeholder="1" value="${esc(r.pair)}" aria-label="Buddy pair number">`+
+    `<input class="bd" type="number" min="1" max="100" inputmode="numeric" placeholder="–" value="${esc(r.depth)}" aria-label="Max depth in metres">`+
+    `<button type="button" class="small rm" aria-label="Remove diver" title="Remove diver">×</button>`;
+  d.querySelector(".rm").onclick = () => { d.remove(); refreshBuddyRows(); renderBuddyCheck(); };
+  d.querySelectorAll("input").forEach(i=>i.addEventListener("input", renderBuddyCheck));
+  return d;
 }
+function refreshBuddyRows(){
+  const rows = [...$("buddyRows").children];
+  rows.forEach((r,i)=>{ r.querySelector(".rm").disabled = rows.length <= 2; if(!r.querySelector(".bp").value) r.querySelector(".bp").placeholder = String(Math.floor(i/2)+1); });
+}
+function addBuddyRow(r){
+  const rows = [...$("buddyRows").children];
+  if(!r){
+    // default pair: join the last pair if it only has one diver, otherwise start the next pair
+    const pairs = rows.map((x,i)=>+x.querySelector(".bp").value || Math.floor(i/2)+1);
+    const last = pairs.length ? pairs[pairs.length-1] : 1;
+    const count = pairs.filter(p=>p===last).length;
+    r = {name:"", pair: rows.length ? String(count < 2 ? last : last+1) : "1", depth:""};
+  }
+  const el = buddyRowEl(r); $("buddyRows").appendChild(el); refreshBuddyRows(); return el;
+}
+function setBuddyRows(list){
+  $("buddyRows").innerHTML = "";
+  const rows = (list && list.length) ? list : [{name:"",pair:"1",depth:""},{name:"",pair:"1",depth:""}];
+  rows.forEach(r=>addBuddyRow(r));
+  while($("buddyRows").children.length < 2) addBuddyRow();
+}
+function getBuddyRows(){
+  return [...$("buddyRows").children].map((r,i)=>({name:r.querySelector(".bn").value.trim(), pair:r.querySelector(".bp").value.trim() || String(Math.floor(i/2)+1), depth:r.querySelector(".bd").value.trim()}));
+}
+/* Group rows by pair number -> [{names, depth}] (depth = shallowest depth entered in the group) */
+function parseBuddies(){
+  const groups = new Map();
+  getBuddyRows().filter(r=>r.name).forEach(r=>{
+    const k = +r.pair || 1; if(!groups.has(k)) groups.set(k, {pair:k, names:[], depths:[]});
+    const g = groups.get(k); g.names.push(r.name); if(r.depth!=="" && !isNaN(+r.depth)) g.depths.push(+r.depth);
+  });
+  return [...groups.values()].sort((a,b)=>a.pair-b.pair).map(g=>({pair:g.pair, names:g.names, depth: g.depths.length ? String(Math.min(...g.depths)) : ""}));
+}
+function fillDiverNames(){ const dl=$("diverNames"); if(dl) dl.innerHTML = divers.map(d=>`<option value="${esc(d.name)}">`).join(""); }
 
 function buildPlan(out, roles){
   const S = settings, site = out.site;
@@ -1140,7 +1196,7 @@ function buildPlan(out, roles){
   const dirLink = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(out.meetLoc ? out.meetLoc.lat+","+out.meetLoc.lng : out.meetQ)}&destination=${site.lat},${site.lng}&travelmode=driving`;
   const w3wSite = site.w3w || out.w3wSite;
   const nameUpper = site.name.split(",")[0];
-  const buddies = parseBuddies($("buddies").value);
+  const buddies = parseBuddies();
   const groups = assessGroups(buddies, site.maxDepth);
   buddies.forEach((b,i)=>{ if(!b.depth && groups[i].planned!=null) b.depth = String(groups[i].planned); });
   const notes = $("diveNotes").value.trim();
@@ -1160,8 +1216,9 @@ function buildPlan(out, roles){
   else if(sch.timing==="a") flags.push(["", `Meeting at ${fmt(sch.meet)} gets the group on site about ${Math.round(sch.onSite/15)*15} min before dive 1. You could meet later.`]);
   if(sch.meet < 6*60) flags.push(["", `This plan needs a very early start (meet at ${fmt(sch.meet)}). Consider a later first dive.`]);
   if(out.drive?.est) flags.push(["", "Travel time is an estimate – check the route before the day."]);
-  groups.filter(g=>g.over).forEach(g=>flags.push(["bad", `Buddy ${g.i+1} is planned to ${g.given} m, deeper than the group's limit of ${g.limit} m set by ${g.limiting.join(", ")}. Reduce the depth or change the pairing.`]));
-  if(site.maxDepth) groups.filter(g=>g.planned!=null && g.planned>site.maxDepth).forEach(g=>flags.push(["", `Buddy ${g.i+1}'s planned ${g.planned} m is deeper than the site's recorded maximum of ${site.maxDepth} m.`]));
+  groups.filter(g=>g.members.length<2).forEach(g=>flags.push(["", `Pair ${g.pair} has only one diver (${g.names.join(", ")}). Give them a buddy, or add them to another pair as a group of three.`]));
+  groups.filter(g=>g.over).forEach(g=>flags.push(["bad", `Pair ${g.pair} is planned to ${g.given} m, deeper than the group's limit of ${g.limit} m set by ${g.limiting.join(", ")}. Reduce the depth or change the pairing.`]));
+  if(site.maxDepth) groups.filter(g=>g.planned!=null && g.planned>site.maxDepth).forEach(g=>flags.push(["", `Pair ${g.pair}'s planned ${g.planned} m is deeper than the site's recorded maximum of ${site.maxDepth} m.`]));
 
   // ---- summary ----
   const diveTimes = sch.dives.map(fmt);
@@ -1299,7 +1356,7 @@ function buildPlan(out, roles){
   H += `<h2>Buddy Pairings</h2>`;
   const maxN = Math.max(2, ...buddies.map(b=>b.names.length));
   const bRows = buddies.length ? buddies : [{names:[],depth:""},{names:[],depth:""}];
-  H += `<table><thead><tr><th>Pair</th>${Array.from({length:maxN},(_,i)=>`<th>Diver ${i+1}</th>`).join("")}<th>Grade limit (m)</th><th>Max Depth (m)</th></tr></thead><tbody>${bRows.map((b,i)=>{ const g=groups[i]; return `<tr><td>Buddy ${i+1}</td>${Array.from({length:maxN},(_,j)=>{ const m=g?.members[j]; return `<td>${m?esc(memberTag(m)):esc(b.names[j]||"")}</td>`; }).join("")}<td>${g&&g.limit!=null?g.limit:""}</td><td class="${g&&g.over?"over":""}">${esc(b.depth)}</td></tr>`; }).join("")}</tbody></table>`;
+  H += `<table><thead><tr><th>Pair</th>${Array.from({length:maxN},(_,i)=>`<th>Diver ${i+1}</th>`).join("")}<th>Grade limit (m)</th><th>Max Depth (m)</th></tr></thead><tbody>${bRows.map((b,i)=>{ const g=groups[i]; return `<tr><td>Pair ${b.pair||i+1}</td>${Array.from({length:maxN},(_,j)=>{ const m=g?.members[j]; return `<td>${m?esc(memberTag(m)):esc(b.names[j]||"")}</td>`; }).join("")}<td>${g&&g.limit!=null?g.limit:""}</td><td class="${g&&g.over?"over":""}">${esc(b.depth)}</td></tr>`; }).join("")}</tbody></table>`;
   if(groups.length) H += `<p class="src">Grade limits use ScotSAC awards: Branch Diver 15 m (12 m under 14), Sport Diver 30 m, Master and First Class Diver 40 m, unless a diver's own limit is recorded. A group's limit is set by its shallowest-qualified diver.</p>`;
 
   H += `<h2>Equipment Checklist</h2>`;
@@ -1331,7 +1388,7 @@ function buildPlan(out, roles){
   sch.dives.forEach((d,i)=>{
     H += `<h3 class="slate-part">Dive ${i+1} – planned entry ${fmt(d)} · max dive time ${+S.maxTime||45} min</h3>`;
     H += `<table class="slate slate-part"><thead><tr><th>Group</th><th>Diver</th><th>Cyl / gas</th><th>Air in (bar)</th><th>Plan max depth (m)</th><th>Time in</th><th>Due out</th><th>Time out</th><th>Air out (bar)</th><th>Max depth (m)</th></tr></thead><tbody>`;
-    slateGroups.forEach((g,gi)=>{ const names = g.names.length ? g.names : ["",""]; names.forEach(nm=>{ H += `<tr><td>Buddy ${gi+1}</td><td>${esc(nm)}</td>${blank(2)}<td>${esc(g.depth)}</td>${blank(5)}</tr>`; }); });
+    slateGroups.forEach((g,gi)=>{ const names = g.names.length ? g.names : ["",""]; names.forEach(nm=>{ H += `<tr><td>Pair ${g.pair||gi+1}</td><td>${esc(nm)}</td>${blank(2)}<td>${esc(g.depth)}</td>${blank(5)}</tr>`; }); });
     H += `</tbody></table>`;
   });
   H += `<h3 class="slate-part">Emergency (ICE) contacts</h3>`;
@@ -1637,7 +1694,8 @@ function fillMeetList(){ $("meetList").innerHTML = store.get("meetPoints",["McDo
   $("timing").querySelector('option[value="std"]').textContent = `Standard – first dive ${settings.firstDive||"10:00"}`;
   const timingUI = () => { const c = $("timing").value==="custom"; $("nonStd").style.display = c ? "" : "none"; $("w_firstTime").style.display = $("anchor").value==="time" ? "" : "none"; };
   $("timing").addEventListener("change", timingUI); $("anchor").addEventListener("change", timingUI); timingUI();
-  if(lf.buddies) $("buddies").value = lf.buddies; if(lf.kitNotes) $("kitNotes").value = lf.kitNotes;
+  setBuddyRows(lf.buddyRows); fillDiverNames(); $("addDiver").onclick = () => { addBuddyRow().querySelector(".bn").focus(); renderBuddyCheck(); };
+  if(lf.kitNotes) $("kitNotes").value = lf.kitNotes;
   const roles = store.get("roles", {}); document.querySelectorAll("[data-role]").forEach(i=>{ if(roles[i.dataset.role]) i.value = roles[i.dataset.role]; });
 
   $("site").onchange = () => { updateSiteCard(); if($("site").value) setFieldError("site"); if($("site").value!=="__adhoc") setFieldError("adhocCoords"); refreshAlert(); };
@@ -1670,7 +1728,7 @@ function fillMeetList(){ $("meetList").innerHTML = store.get("meetPoints",["McDo
   $("btnDivers").onclick = openDivers; $("openDivers").onclick = openDivers;
   $("diversClose").onclick = () => $("diversModal").classList.remove("open");
   $("dvAdd").onclick = () => dvRow(); $("dvSave").onclick = saveDivers;
-  $("buddies").addEventListener("input", renderBuddyCheck); $("site").addEventListener("change", renderBuddyCheck);
+  $("site").addEventListener("change", renderBuddyCheck);
   renderBuddyCheck();
   $("btnSites").onclick = () => { renderSiteList(); $("siteForm").style.display="none"; $("sitesModal").classList.add("open"); };
   $("sitesClose").onclick = () => $("sitesModal").classList.remove("open");
