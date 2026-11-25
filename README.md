@@ -28,6 +28,7 @@ The plan can be edited on screen, then downloaded as a **Word (.docx)** file, pr
 
 ## Version history
 
+- **v1.11** – Dark mode. Club settings → Appearance: Automatic (follows the device's light or dark setting, the default), Light or Dark. Printed plans, PDFs and Word downloads are always on a plain white background.
 - **v1.10** – Training now has an **Expedition roles** tab, based on the ScotSAC Master Diver Lecture Notes. It covers the chain of command, a card for each of 11 roles (purpose, before the trip, on the day, if something goes wrong, responsible to) and a second 10-question quiz.
 - **v1.9** – Shore or boat dive choice (preset from the site library). Boat dives add the launch point and the boat and skipper, drive time to the launch point, boat hazards, VHF Channel 16 in the Emergency Action Plan, boat kit, a skipper role and a boat cover note on the slate.
 - **v1.8** – Buddy pairings entered as rows (diver name, pair number, optional max depth), starting with two rows, with **+ Add diver** for more. Divers without a buddy are flagged.
