@@ -142,6 +142,13 @@ body:has(.modal.open){overflow:hidden}
 .hz{display:grid;grid-template-columns:1.2fr 1.2fr 60px 60px 2fr 30px;gap:6px;margin:4px 0}
 .hz input{padding:6px}
 /* CR-003 diver register */
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1.5px solid var(--sea);border-radius:10px;overflow:hidden}
+.seg label{margin:0;cursor:pointer}
+.seg input{position:absolute;opacity:0;width:1px;height:1px}
+.seg span{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;font-weight:600;color:var(--sea);background:#fff;min-height:44px}
+.seg label + label span{border-left:1.5px solid var(--sea)}
+.seg input:checked + span{background:var(--sea);color:#fff}
+.seg input:focus-visible + span{outline:3px solid var(--teal);outline-offset:-3px}
 .brow{display:grid;grid-template-columns:1fr 78px 86px 36px;gap:6px;align-items:center;margin:6px 0}
 .brow.head{margin:8px 0 0;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 .brow input{padding:8px 10px}
@@ -330,6 +337,19 @@ body.offline .offline-pill{display:inline-block}
         <div id="f_meet"><label for="meet">Meeting point <span class="req">*</span></label>
         <input id="meet" required placeholder="e.g. McDonald's, Balloch" list="meetList"></div>
         <p class="muted" style="font-size:13px;margin:6px 0 0">Choose a meeting time that gets everyone on site about an hour before the first dive.</p>
+        <div id="f_diveType"><label>Shore or boat dive? <span class="req">*</span></label>
+          <div class="seg" role="radiogroup" aria-label="Dive type">
+            <label><input type="radio" name="diveType" value="shore" checked><span>Shore dive</span></label>
+            <label><input type="radio" name="diveType" value="boat"><span>Boat dive</span></label>
+          </div>
+        </div>
+        <div id="boatFields" style="display:none">
+          <div class="row">
+            <div><label for="launch">Launch point / harbour</label><input id="launch" placeholder="e.g. Rhu Marina"></div>
+            <div><label for="boat">Boat &amp; skipper</label><input id="boat" placeholder="e.g. RIB Selkie – skipper Alan"></div>
+          </div>
+          <p class="muted" style="font-size:13px;margin:6px 0 0">The drive is worked out to the launch point. Boat hazards, VHF and boat kit are added to the plan.</p>
+        </div>
         <datalist id="meetList"></datalist>
       </fieldset>
 
@@ -750,6 +770,8 @@ function currentSite(){
   }
   return sites.find(s=>s.id===v) || null;
 }
+const diveType = () => (document.querySelector('input[name="diveType"]:checked')||{}).value || "shore";
+function setDiveType(t){ const r = document.querySelector(`input[name="diveType"][value="${t}"]`); if(r) r.checked = true; $("boatFields").style.display = t==="boat" ? "" : "none"; }
 function updateSiteCard(){
   const v = $("site").value; $("adhoc").style.display = v==="__adhoc" ? "block" : "none";
   const s = currentSite(); const card = $("siteCard");
@@ -977,14 +999,18 @@ async function generate(ev){
   stat("hosp","run","Looking up nearest A&E…");
   if(!site.w3w && S.w3wKey) stat("w3w","run","Getting what3words address…");
 
-  const out = {site, date, meetQ, meetTime, warnings:[], sources:[]};
+  const out = {site, date, meetQ, meetTime, warnings:[], sources:[], diveType: diveType(), launchQ: $("launch").value.trim(), boat: $("boat").value.trim()};
+  out.boatDive = out.diveType === "boat";
 
   const pMeet = (async()=>{
     try{
       const m = await geocode(meetQ, site); if(!m) throw new Error("not found");
       out.meetLoc = m;
+      // boat dives: drive to the launch point if one is given
+      let dest = site;
+      if(out.boatDive && out.launchQ){ try{ const l = await geocode(out.launchQ, site); if(l){ out.launchLoc = l; dest = l; } }catch(e){} }
       try{
-        out.drive = await route(m, site);
+        out.drive = await route(m, dest);
         const short = (m.label||meetQ).split(",").slice(0,3).join(",");
         if(out.drive.minutes > 150){ out.meetFar = true; stat("meet","warn",`Meeting point matched “${short}” – ${Math.round(out.drive.minutes)} min drive. Is that right? Add the town or postcode if not.`); }
         else stat("meet","ok",`Meeting point: ${short} – ${Math.round(out.drive.minutes)} min drive (${Math.round(out.drive.km*0.621)} miles)`);
@@ -1059,8 +1085,8 @@ function schedule(out){
   const rows = [
     [meet, `Meet at ${out.meetQ}`],
     [depart, `Depart for site (about ${drive} min drive)`],
-    [arrive, "Arrive on site (estimated) – unload, set up kit"],
-    [Math.max(arrive, dive1 - brief), "Site briefing & equipment checks"],
+    [arrive, out.boatDive ? `Arrive at ${out.launchQ || "the launch point"} (estimated) – load the boat` : "Arrive on site (estimated) – unload, set up kit"],
+    [Math.max(arrive, dive1 - brief), out.boatDive ? "Boat & dive briefing, equipment checks – then launch" : "Site briefing & equipment checks"],
     [Math.max(arrive, dive1 - 10), "Kit up & buddy checks"]
   ];
   const dives = [], outs = []; let t = dive1;
@@ -1124,6 +1150,12 @@ function buildRisks(out, wx, sch){
   R.push(["Cold water"+(sst!=null?` (sea ≈ ${sst.toFixed(0)} °C)`:""), "Hypothermia", 2, cold?3:2, "Drysuit and adequate undersuit, hood and gloves; warm layers and hot drinks between dives"]);
   if(wx && wx.tmax<=5) R.push([`Cold air (${wx.tmin}–${wx.tmax} °C, feels ${wx.feelsMin} °C)`, "Hypothermia / freezing regulators", 2, 2, "Keep warm between dives, keep regulators dry and out of wind; consider single dive"]);
   R.push(["Low visibility", "Separation", 1, 1, "Brief and agree lost-buddy procedure; stay close, carry torch"]);
+  if(out.boatDive){
+    R.push(["Boarding and moving about the boat", "Slips, falls, crush injuries", 2, 2, "Follow the skipper's briefing; one hand for the boat; kit stowed and secured"]);
+    R.push(["Boat propeller", "Serious injury", 1, 3, "Engine in neutral near divers; stay clear of the stern; follow the skipper's pick-up procedure"]);
+    R.push(["Separation from the boat / drifting", "Diver lost at sea", 1, 3, "DSMB on every ascent; agree recall signal; skipper keeps watch; carry whistle and torch"]);
+    R.push(["Seasickness", "Vomiting underwater, dehydration", 2, 1, "Take remedies beforehand; tell the skipper; don't dive if unwell"]);
+  }
   R.push(["Fishing line", "Entanglement", 1, 3, "Streamline equipment; carry a cutting tool"]);
   R.push(["Running out of air", "Injury / drowning", 1, 3, "Dive planning, gas turn points, clear communication and buddy checks"]);
   R.push(["Slippery rocks / seaweed", "Slip, fall, injury", 2, (wx && wx.pmax>=60)?3:2, "Extra care entering and exiting the water; ask for help if required"]);
@@ -1228,12 +1260,14 @@ function buildPlan(out, roles){
   let summary = `The expedition to ${site.name} is planned for ${longDate(out.date)}. The group will meet at ${out.meetQ} at ${fmt(sch.meet)} and depart at ${fmt(sch.depart)} (approximately ${sch.drive} minutes' drive), arriving on site at about ${fmt(sch.arrive)}. The ${sch.mode==="Standard"?"standard club":"non-standard"} schedule has the site briefing and equipment checks at ${fmt(sch.brief)}. ${n===1?"One dive is":`${["","","Two","Three"][n]||n} dives are`} scheduled, entering the water at ${listJoin(diveTimes)}, each with up to ${sch.dive} minutes in the water${n>1?` and ${Math.floor(sch.gap/60)} hour${sch.gap%60?` ${sch.gap%60} minutes`:""} between leaving the water and the next entry to cover the debrief, a break, the next briefing and buddy checks`:""}. The last divers are out by ${outsT[outsT.length-1]}.`;
   if(notes) summary += ` ${notes.replace(/\.?$/,".")}`;
   if(depthTxt.length) summary += ` Buddy groups have maximum depths of ${listJoin([...new Set(depthTxt)])} metres.`;
+  if(out.boatDive) summary += ` This is a boat dive${out.launchQ?` launching from ${out.launchQ}`:""}${out.boat?` (${out.boat})`:""}.`;
   summary += " This plan sets out tide and weather information, access precautions, equipment requirements, team roles and emergency contacts to support the day's activities.";
 
   // ---- HTML ----
   let H = "";
   H += `<div class="doc-title"><h1>${esc(site.name)}</h1><div class="t2">Dive Expedition Plan</div></div>`;
-  H += `<div class="keyline"><b>Meeting point:</b><span>${esc(out.meetQ)}, ${fmt(sch.meet)}</span><b>Dive site:</b><span>${esc(site.name)}</span><b>Date:</b><span>${esc(longDate(out.date))}</span><b>Club:</b><span>${esc(S.club)}</span></div>`;
+  const dtLabel = out.boatDive ? `Boat dive${out.launchQ?` from ${out.launchQ}`:""}` : "Shore dive";
+  H += `<div class="keyline"><b>Dive type:</b><span>${esc(dtLabel)}</span><b>Meeting point:</b><span>${esc(out.meetQ)}, ${fmt(sch.meet)}</span><b>Dive site:</b><span>${esc(site.name)}</span><b>Date:</b><span>${esc(longDate(out.date))}</span><b>Club:</b><span>${esc(S.club)}</span></div>`;
   // ===== CR-004: conditions at a glance =====
   {
     const C = [];
@@ -1264,7 +1298,8 @@ function buildPlan(out, roles){
   H += `<h2>Site Information</h2>`;
   H += `<p>${esc(site.desc || `${site.name} – see divemap.uk for site description, depths and reports.`)}</p>`;
   const facts = [];
-  if(site.type) facts.push(["Dive type", site.type]);
+  facts.push(["Dive type", out.boatDive ? "Boat dive" : "Shore dive"]);
+  if(out.boatDive){ if(out.launchQ) facts.push(["Launch point", out.launchQ]); if(out.boat) facts.push(["Boat & skipper", out.boat]); }
   if(site.maxDepth) facts.push(["Maximum depth available", site.maxDepth+" m"]);
   facts.push(["Coordinates", `${site.lat.toFixed(5)}, ${site.lng.toFixed(5)}`]);
   H += `<table><tbody>${facts.map(f=>`<tr><th style="width:38%">${esc(f[0])}</th><td>${esc(f[1])}</td></tr>`).join("")}</tbody></table>`;
@@ -1322,19 +1357,22 @@ function buildPlan(out, roles){
     `<tr><th>Site</th><td>${esc(site.name)}</td></tr>`+
     `<tr><th>Coordinates</th><td>${site.lat.toFixed(5)}, ${site.lng.toFixed(5)} (${esc(toDM(site.lat,site.lng))})</td></tr>`+
     `<tr><th>what3words</th><td>${w3wSite?`///${esc(w3wSite)}`:`<a href="https://what3words.com/${site.lat},${site.lng}">look up on what3words</a>`}</td></tr>`+
+    (out.boatDive && out.launchQ?`<tr><th>Launch point</th><td>${esc(out.launchQ)}${out.launchLoc?` (${out.launchLoc.lat.toFixed(4)}, ${out.launchLoc.lng.toFixed(4)})`:""}</td></tr>`:"")+
     (site.w3wParking?`<tr><th>Parking / road access</th><td>///${esc(site.w3wParking)}</td></tr>`:"")+
     `<tr><th>${hp&&hp.minorOnly?"Nearest minor injuries unit":"Nearest A&amp;E"}</th><td>${hp?`${esc(hdesc(hp))} – <a href="${hlink(hp)}">directions</a>`:`To be confirmed – check <a href="https://www.nhsinform.scot/scotlands-service-directory/">NHS inform</a>`}</td></tr>`+
     (hp&&hp.miu?`<tr><th>Closer minor injuries unit (not A&amp;E)</th><td>${esc(hdesc(hp.miu))} – <a href="${hlink(hp.miu)}">directions</a></td></tr>`:"")+
     `</tbody></table>`;
   H += `<h3>Who to call</h3>`;
   H += `<table><thead><tr><th>Situation</th><th>Call</th><th>Notes</th></tr></thead><tbody>`+
-    `<tr><td>Any emergency at the dive site – injury, missing diver, suspected DCI</td><td><b>999 or 112 – ask for the Coastguard</b> (VHF Ch 16 at sea)</td><td>Coastguard co-ordinates all other services</td></tr>`+
+    (out.boatDive
+      ? `<tr><td>Any emergency on the boat or at sea – injury, missing diver, suspected DCI</td><td><b>VHF Channel 16 – Mayday or Pan-Pan to the Coastguard</b>, or 999 / 112</td><td>The skipper makes the call; Coastguard co-ordinates lifeboat, helicopter and ambulance</td></tr>`
+      : `<tr><td>Any emergency at the dive site – injury, missing diver, suspected DCI</td><td><b>999 or 112 – ask for the Coastguard</b> (VHF Ch 16 at sea)</td><td>Coastguard co-ordinates all other services</td></tr>`)+
     `<tr><td>Diving illness advice, including DCI after leaving the site</td><td><b>${esc(S.hyper)}</b></td><td>Do not phone or drive to a chamber directly – most are not staffed 24 hours</td></tr>`+
     `<tr><td>Casualty seriously unwell or getting worse</td><td><b>999</b></td><td>Don't delay to get advice first</td></tr>`+
     `</tbody></table>`;
   H += `<h3>Immediate actions</h3><ol>`+
     `<li>Make the scene safe, recover the casualty from the water and check airway and breathing. Start CPR if they are not breathing normally.</li>`+
-    `<li>Call 999 and ask for the Coastguard. Give the site location above, the number of casualties and their condition.</li>`+
+    (out.boatDive ? `<li>The skipper calls the Coastguard on VHF Channel 16 (or 999). Give the boat's position, the number of casualties and their condition, and follow the Coastguard's directions on where to land.</li>` : `<li>Call 999 and ask for the Coastguard. Give the site location above, the number of casualties and their condition.</li>`)+
     `<li>For suspected DCI or lung injury, give 100% oxygen${o2?` (Oxygen Administrator: ${esc(o2)})`:""} and continue until handed over. Keep the casualty lying flat and give water if they are fully conscious.</li>`+
     `<li>The First Aider${fa?` (${esc(fa)})`:""} stays with the casualty and records symptoms and the times they appeared.</li>`+
     `<li>The Dive Marshal passes on the dive profile from the slate (max depth, dive time, air in and out, any missed stops). Check the buddy too – they dived the same profile.</li>`+
@@ -1351,7 +1389,8 @@ function buildPlan(out, roles){
     `<li>Collect an emergency (ICE) contact for every diver on the dive slate.</li>`+
     `</ul>`;
 
-  H += `<h2>Roles</h2><table><tbody>${Object.entries(roles).map(([k,v])=>`<tr><th style="width:42%">${esc(k)}</th><td>${esc(v)}</td></tr>`).join("")}</tbody></table>`;
+  const roleRows = Object.entries(roles); if(out.boatDive) roleRows.push(["Boat / Skipper", out.boat]);
+  H += `<h2>Roles</h2><table><tbody>${roleRows.map(([k,v])=>`<tr><th style="width:42%">${esc(k)}</th><td>${esc(v)}</td></tr>`).join("")}</tbody></table>`;
 
   H += `<h2>Buddy Pairings</h2>`;
   const maxN = Math.max(2, ...buddies.map(b=>b.names.length));
@@ -1365,7 +1404,8 @@ function buildPlan(out, roles){
   if(wx?.sunset && sch.end > toMin(wx.sunset)-60) extras.push("backup torch and head torch for packing up");
   if((risk.sst!=null && risk.sst<10) || (wx && wx.tmax<8)) extras.push("hood, dry gloves or thick wet gloves, warm clothing and hot drinks");
   if(wx && wx.pmax>=50) extras.push("waterproofs for kitting up");
-  H += `<p>${esc(kit)}${extras.length?` For the forecast conditions also bring: ${esc(extras.join("; "))}.`:""}${kitNotes?` ${esc(kitNotes.replace(/\.?$/,"."))}`:""}</p>`;
+  if(out.boatDive) extras.unshift("DSMB and reel for every diver, whistle or audible signal, seasickness remedies, windproof layer for the boat, kit in a crate or bag that can be secured");
+  H += `<p>${esc(kit)}${extras.length?` For ${out.boatDive?"the boat and ":""}the forecast conditions also bring: ${esc(extras.join("; "))}.`:""}${kitNotes?` ${esc(kitNotes.replace(/\.?$/,"."))}`:""}</p>`;
 
   H += `<h2>Buddy Checks</h2>`;
   H += `<p>Each buddy pairing must carry out a buddy check prior to entry to the water.</p>`;
@@ -1394,6 +1434,7 @@ function buildPlan(out, roles){
   H += `<h3 class="slate-part">Emergency (ICE) contacts</h3>`;
   const allDivers = slateGroups.flatMap(g=>g.names.length?g.names:["",""]);
   H += `<table class="slate slate-part"><thead><tr><th>Diver</th><th>ICE contact name</th><th>ICE phone</th></tr></thead><tbody>${allDivers.map(nm=>`<tr><td>${esc(nm)}</td><td></td><td></td></tr>`).join("")}</tbody></table>`;
+  if(out.boatDive) H += `<p class="src slate-part"><b>Boat cover:</b> the skipper keeps watch for DSMBs and is told the number of divers in the water at all times.</p>`;
   H += `<p class="src slate-part">Each pair reports entry, then air out and max depth on exit. Due out = time in + max dive time. A pair not back by its due-out time is overdue – start the missing diver procedure. Emergency: 999 Coastguard · ${esc(S.hyper)}</p>`;
 
   const now = new Date().toLocaleString("en-GB",{dateStyle:"medium",timeStyle:"short"});
@@ -1411,7 +1452,7 @@ const TRAINING = {
   sections: [
     { t:"Expedition summary", what:["Site, date, meeting point and time","Departure, arrival and dive times","Dive objectives and buddy groups' maximum depths"], why:"Gives everyone the whole day in one paragraph, so nobody turns up at the wrong place or time.", src:"Written from your inputs and the calculated schedule." },
     { t:"Conditions at a glance", what:["Wind and gusts, rain, air and sea temperature","Daylight, sea state and tide data","Timing (are we on site in time?) and divers' depth limits","An overall verdict: suitable, go with caution, or act"], why:"A quick go/no-go check before and on the day. Red items must be dealt with. The Dive Marshal makes the final decision on site.", src:"Calculated from the weather, marine and tide forecasts and your plan." },
-    { t:"Site information", what:["Description, dive type and maximum depth","Coordinates and what3words for the entry point and parking","Google Maps directions and the divemap.uk reference"], why:"Lets everyone find the site and gives emergency services a precise location.", src:"The club site library, divemap.uk and what3words." },
+    { t:"Site information", what:["Shore or boat dive (boat dives add the launch point, skipper and boat hazards)","Description and maximum depth","Coordinates and what3words for the entry point and parking","Google Maps directions and the divemap.uk reference"], why:"Lets everyone find the site and gives emergency services a precise location.", src:"The club site library, divemap.uk and what3words." },
     { t:"Tide and weather planning", what:["Forecast summary and hourly table","High and low water times and heights","The tide state at each dive (flooding, ebbing or slack)"], why:"Tide affects current, visibility, entry and exit, and where kit can safely be left. Weather affects surface conditions and everyone's comfort and safety.", src:"Open-Meteo forecast. Tides from the Admiralty (with a key) or estimated from an ocean model – always confirm estimates with Admiralty EasyTide." },
     { t:"Dive schedule", what:["Meeting time and point (entered by the organiser)","Standard schedule: dive 1 in the water at 10:00, dives up to 45 min","Next dive 1 hour 15 min after leaving the water (debrief, break, briefing, buddy checks)","Non-standard schedule when the day doesn't fit, e.g. timed to high water"], why:"Aim to be on site about an hour before dive 1 to unload, brief and kit up without rushing. The planner warns if the meeting time doesn't allow this.", src:"Your meeting time plus live drive time from OpenStreetMap routing." },
     { t:"Dive information", what:["Objectives (e.g. skills at 8–15 m)","The route: entry, bearings, features, depth and turn points, exit","Optional dive map image"], why:"Every pair should know the route, depth and turn criteria before they get in.", src:"Route notes saved for the site in the site library." },
@@ -1698,7 +1739,8 @@ function fillMeetList(){ $("meetList").innerHTML = store.get("meetPoints",["McDo
   if(lf.kitNotes) $("kitNotes").value = lf.kitNotes;
   const roles = store.get("roles", {}); document.querySelectorAll("[data-role]").forEach(i=>{ if(roles[i.dataset.role]) i.value = roles[i.dataset.role]; });
 
-  $("site").onchange = () => { updateSiteCard(); if($("site").value) setFieldError("site"); if($("site").value!=="__adhoc") setFieldError("adhocCoords"); refreshAlert(); };
+  document.querySelectorAll('input[name="diveType"]').forEach(r=>r.addEventListener("change", ()=>setDiveType(diveType())));
+  $("site").onchange = () => { const st = currentSite(); if(st && st.type) setDiveType(/boat/i.test(st.type) ? "boat" : "shore"); updateSiteCard(); if($("site").value) setFieldError("site"); if($("site").value!=="__adhoc") setFieldError("adhocCoords"); refreshAlert(); };
   ["adhocCoords","adhocName"].forEach(id=>$(id).oninput = () => { updateSiteCard(); if(id==="adhocCoords" && parseCoords($(id).value)) { setFieldError("adhocCoords"); refreshAlert(); } });
   ["date","meetTime","meet"].forEach(id=>$(id).addEventListener("input", () => { if($(id).value.trim()){ setFieldError(id); refreshAlert(); } }));
   function refreshAlert(){ if(!document.querySelector("#planForm .field-error")) $("formAlert").classList.remove("show"); }
